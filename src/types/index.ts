@@ -461,3 +461,109 @@ export interface Notification {
   is_read: boolean
   created_at: string
 }
+
+// ── Phase 4 types ─────────────────────────────────────────────
+
+export interface Conversation {
+  id: string
+  school_id: string
+  subject: string | null
+  created_by: string
+  created_at: string
+  last_message_at: string
+  // joined
+  participants?: ConversationParticipant[]
+}
+
+export interface ConversationParticipant {
+  id: string
+  conversation_id: string
+  profile_id: string
+  last_read_at: string | null
+  created_at: string
+  // joined
+  profile?: Profile
+}
+
+export interface ChatMessage {
+  id: string
+  conversation_id: string
+  sender_profile_id: string
+  body: string
+  created_at: string
+  // joined
+  sender?: Profile
+}
+
+export type CbtTestStatus = 'draft' | 'published' | 'closed'
+
+export interface CbtTest {
+  id: string
+  school_id: string
+  title: string
+  instructions: string | null
+  offering_id: string | null
+  class_id: string | null
+  subject_id: string | null
+  duration_minutes: number
+  status: CbtTestStatus
+  starts_at: string | null
+  ends_at: string | null
+  show_results: boolean
+  created_by: string
+  created_at: string
+}
+
+export interface CbtQuestion {
+  id: string
+  test_id: string
+  ordinal: number
+  prompt: string
+  options: string[]
+  correct_index: number
+  marks: number
+  created_at: string
+}
+
+export interface CbtAttempt {
+  id: string
+  test_id: string
+  profile_id: string
+  student_id: string | null
+  started_at: string
+  submitted_at: string | null
+  answers: Record<string, number> | null
+  score: number | null
+  total: number | null
+}
+
+export interface GuardianNotification {
+  id: string
+  guardian_id: string
+  school_id: string | null
+  learner_id: string | null
+  title: string
+  body: string | null
+  type: 'info' | 'success' | 'warning' | 'alert'
+  is_read: boolean
+  created_at: string
+}
+
+export type PaymentTxStatus = 'initialized' | 'success' | 'failed' | 'abandoned'
+
+export interface PaymentTransaction {
+  id: string
+  school_id: string | null
+  invoice_id: string | null
+  student_id: string | null
+  profile_id: string | null
+  provider: string
+  reference: string
+  amount: number
+  currency: string
+  status: PaymentTxStatus
+  authorization_url: string | null
+  paid_at: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+}

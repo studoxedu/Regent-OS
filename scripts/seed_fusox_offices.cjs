@@ -1,5 +1,5 @@
 /**
- * Seed office_instances for FUSOX (Federal University of Studox)
+ * Seed office_instances for FUSOX (Federal University of Regentos)
  * Creates one instance per office_type for administrative offices,
  * plus one Dean instance per faculty and one HOD instance per department.
  * Also assigns the FUSOX admin user to the institution_admin office instance.

@@ -11,7 +11,7 @@ const TERTIARY_SCHOOL_ID = '00000000-0000-0000-0000-000000000003'
 async function main() {
   // 1. Create auth user
   const { data: userData, error: authErr } = await supabase.auth.admin.createUser({
-    email: 'tertiary@studox.test',
+    email: 'tertiary@regentos.test',
     password: 'haidarbuilds2026!',
     email_confirm: true,
     user_metadata: { first_name: 'School', last_name: 'Admin' },
@@ -26,7 +26,7 @@ async function main() {
   if (!userId) {
     // User already exists — list and find
     const { data: list } = await supabase.auth.admin.listUsers()
-    userId = list?.users?.find(u => u.email === 'tertiary@studox.test')?.id
+    userId = list?.users?.find(u => u.email === 'tertiary@regentos.test')?.id
     if (!userId) throw new Error('Could not find user')
     console.log('✓ User already existed:', userId)
   } else {
@@ -36,7 +36,7 @@ async function main() {
   // 2. Profile
   const { error: profileErr } = await supabase.from('profiles').upsert({
     id: userId,
-    email: 'tertiary@studox.test',
+    email: 'tertiary@regentos.test',
     first_name: 'School',
     last_name: 'Admin',
   })
@@ -53,13 +53,13 @@ async function main() {
     office_id: office.id,
   }, { onConflict: 'profile_id,school_id,office_id', ignoreDuplicates: true })
   if (memErr) throw new Error('Membership: ' + memErr.message)
-  console.log('✓ Membership: school_admin @ Studox Polytechnic')
+  console.log('✓ Membership: school_admin @ Regentos Polytechnic')
 
   console.log('\nTertiary user ready:')
-  console.log('  Email   : tertiary@studox.test')
+  console.log('  Email   : tertiary@regentos.test')
   console.log('  Password: haidarbuilds2026!')
   console.log('  Office  : school_admin')
-  console.log('  School  : Studox Polytechnic (ND / HND)')
+  console.log('  School  : Regentos Polytechnic (ND / HND)')
   console.log('\nSign in at http://localhost:5173')
 }
 

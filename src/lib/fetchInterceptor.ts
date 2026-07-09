@@ -27,6 +27,10 @@ function isStorageUrl(url: string): boolean {
   return url.includes('/storage/v1/')
 }
 
+function isFunctionsUrl(url: string): boolean {
+  return url.includes('/functions/v1/')
+}
+
 const WRITE_RPCS = ['flow_execute', 'create_staff_member']
 
 function isMutation(method: string, url: string): boolean {
@@ -57,8 +61,9 @@ export function installFetchInterceptor() {
     const isSupabase = url.includes('.supabase.co')
     if (!isSupabase) return originalFetch(input, init)
 
-    // Auth and storage always go through directly
-    if (isAuthUrl(url) || isStorageUrl(url)) return originalFetch(input, init)
+    // Auth, storage and edge functions (e.g. payments) always go through
+    // directly — a queued/faked payment call must never report success.
+    if (isAuthUrl(url) || isStorageUrl(url) || isFunctionsUrl(url)) return originalFetch(input, init)
 
     const method = (init?.method ?? 'GET').toUpperCase()
     const headersObj = Object.fromEntries(

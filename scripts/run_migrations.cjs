@@ -58,7 +58,7 @@ async function main() {
 
   await runSQL(`
     INSERT INTO school_groups (id, name)
-    VALUES ('${groupId}', 'Studox Demo Group')
+    VALUES ('${groupId}', 'Regentos Demo Group')
     ON CONFLICT (id) DO NOTHING
   `, 'Demo school group');
 

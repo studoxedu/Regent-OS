@@ -4,7 +4,7 @@ const path  = require('path');
 
 const PAT         = process.env.SUPABASE_PAT;
 const PROJECT_REF = 'fghdgtihpvaehykgqgro';
-const SCHOOL_ID   = '00000000-0000-0000-0000-000000000003'; // Studox Polytechnic
+const SCHOOL_ID   = '00000000-0000-0000-0000-000000000003'; // Regentos Polytechnic
 
 function sql(query) {
   return new Promise((resolve, reject) => {
@@ -201,7 +201,7 @@ async function run() {
       v_temp_password := upper(substring(encode(gen_random_bytes(4), 'hex'), 1, 4))
                          || lower(substring(encode(gen_random_bytes(4), 'hex'), 1, 4));
       v_email         := lower(replace(v_reg_number, '/', '-'))
-                         || '@' || lower(v_inst_code) || '.studox.ng';
+                         || '@' || lower(v_inst_code) || '.regentos.ng';
 
       INSERT INTO auth.users (
         instance_id, id, aud, role,
@@ -293,8 +293,8 @@ async function run() {
   if (r.error) { console.error('FAIL:', r.error); process.exit(1); }
   console.log('   OK');
 
-  // 10. Set institution code for Studox Polytechnic
-  console.log('10. Configuring Studox Polytechnic (code=STX)…');
+  // 10. Set institution code for Regentos Polytechnic
+  console.log('10. Configuring Regentos Polytechnic (code=STX)…');
   r = await sql(`
     UPDATE schools
     SET code = 'STX',

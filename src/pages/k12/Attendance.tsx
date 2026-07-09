@@ -96,8 +96,41 @@ export default function Attendance({ appUser }: Props) {
     const { error } = await supabase.from('attendance_records').upsert(upserts, { onConflict: 'enrollment_id,date' })
     setSaving(false)
     if (error) { flash(error.message, 'error'); return }
+    notifyGuardians()
     setSaved({ ...attendance })
     flash('Attendance saved.')
+  }
+
+  // Alert linked guardians when a learner is newly marked absent/late (best-effort)
+  async function notifyGuardians() {
+    const flagged = enrollments.filter(en => {
+      const status = attendance[en.id] ?? 'present'
+      return (status === 'absent' || status === 'late') && saved[en.id] !== status
+    })
+    if (flagged.length === 0) return
+
+    const { data: links } = await supabase
+      .from('guardian_links')
+      .select('guardian_id, learner_id')
+      .in('learner_id', flagged.map(en => en.learner_id))
+    if (!links || links.length === 0) return
+
+    const dateLabel = new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    const rows = links.flatMap(link => {
+      const en = flagged.find(e => e.learner_id === link.learner_id)
+      if (!en) return []
+      const status = attendance[en.id]
+      const name   = `${en.learner?.first_name ?? ''} ${en.learner?.last_name ?? ''}`.trim()
+      return [{
+        guardian_id: link.guardian_id,
+        school_id:   schoolId,
+        learner_id:  link.learner_id,
+        title:       status === 'absent' ? `${name} was absent today` : `${name} arrived late today`,
+        body:        `${name} was marked ${status} on ${dateLabel}. Contact the school if this is unexpected.`,
+        type:        status === 'absent' ? 'alert' : 'warning',
+      }]
+    })
+    if (rows.length > 0) await supabase.from('guardian_notifications').insert(rows)
   }
 
   async function loadSummary() {

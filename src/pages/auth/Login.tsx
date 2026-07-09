@@ -50,7 +50,7 @@ export default function Login({ onSignIn }: LoginProps) {
       <div className="hidden lg:flex lg:w-1/2 bg-[#0d1117] flex-col justify-between px-14 py-12">
         {/* Logo */}
         <div>
-          <div className="text-[22px] font-black text-white tracking-tight leading-none">Studox OS</div>
+          <div className="text-[22px] font-black text-white tracking-tight leading-none">Regent OS</div>
           <div className="text-[10px] text-[#4a5568] uppercase tracking-[0.18em] mt-1">
             Institutional Infrastructure
           </div>

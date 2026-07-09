@@ -97,7 +97,7 @@ export default function StudentResults({ appUser }: Props) {
     const w = window.open('', '_blank')!
     w.document.write(`<!DOCTYPE html><html><head><title>Transcript — ${ctx.firstName} ${ctx.lastName}</title>
     <style>body{font-family:sans-serif;padding:32px;color:#1a1a2e}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{padding:8px 12px;border:1px solid #e5e7eb;font-size:13px}th{background:#f9fafb;font-weight:600}h1{font-size:18px}h2{font-size:14px;color:#6b7280}</style></head>
-    <body><h1>${appUser.activeSchool?.name ?? 'Studox'}</h1><h2>Academic Transcript</h2>
+    <body><h1>${appUser.activeSchool?.name ?? 'Regent OS'}</h1><h2>Academic Transcript</h2>
     <p><b>Name:</b> ${ctx.firstName} ${ctx.lastName} &nbsp;|&nbsp; <b>Reg No:</b> ${ctx.regNumber ?? '—'} &nbsp;|&nbsp; <b>Level:</b> ${ctx.level?.toUpperCase() ?? '—'}</p>
     <table><thead><tr><th>Code</th><th>Course</th><th>CU</th><th>CA</th><th>Exam</th><th>Total</th><th>Grade</th><th>GP</th></tr></thead>
     <tbody>${rows}</tbody></table>

@@ -1,5 +1,5 @@
 /**
- * Full seed — Federal University of Studox (FUSOX)
+ * Full seed — Federal University of Regentos (FUSOX)
  * 4 Faculties · 9 Departments · 24 Courses · 8 Admin · 4 Deans · 7 HODs · 10 Lecturers · 19 Students
  */
 
@@ -89,7 +89,7 @@ function esc(s) { return s.replace(/'/g, "''") }
 
 async function main() {
   console.log('\n╔══════════════════════════════════════════════════╗')
-  console.log('║  Federal University of Studox — Full Seed        ║')
+  console.log('║  Federal University of Regentos — Full Seed        ║')
   console.log('╚══════════════════════════════════════════════════╝\n')
 
   // ── 0. Schema check: discover actual column names ─────────────
@@ -112,13 +112,13 @@ async function main() {
   console.log('\n1. Creating university…')
   const SCHOOL_ID = await upsertGet(
     `INSERT INTO schools (name, code, institution_type, stages_offered, tier_id, is_active, modules_included)
-     VALUES ('Federal University of Studox', 'FUSOX', 'university', ARRAY['degree'], 'standard', true,
+     VALUES ('Federal University of Regentos', 'FUSOX', 'university', ARRAY['degree'], 'standard', true,
              ARRAY['registry','acadex','senate','schedox','paydesk','boards','coredesk','hr','library'])
      ON CONFLICT DO NOTHING`,
     `SELECT id FROM schools WHERE code = 'FUSOX' LIMIT 1`,
     'FUSOX school'
   )
-  console.log(`  ✓ Federal University of Studox: ${SCHOOL_ID}`)
+  console.log(`  ✓ Federal University of Regentos: ${SCHOOL_ID}`)
 
   // ── 2. Grade Scales ───────────────────────────────────────────
   console.log('\n2. Grade scales (5-point CGPA)…')
@@ -322,7 +322,7 @@ async function main() {
     { email:'stu.nkechi@fusox.edu.ng',   first:'Nkechi',   last:'Ofosu',    dept:'HIS', dob:'2003-10-16', gender:'female', reg:'FUSOX/HIS/2025/002' },
   ]
 
-  const STU_PW = 'StudoxStu2026!'
+  const STU_PW = 'RegentosStu2026!'
   const studentOfficeId = officeMap['student']
   const stuDbIds = {}  // reg → students.id
 
@@ -403,9 +403,9 @@ async function main() {
   // ── Done ──────────────────────────────────────────────────────
   console.log(`
 ╔══════════════════════════════════════════════════════════════════════╗
-║          FEDERAL UNIVERSITY OF STUDOX — SEEDED ✓                     ║
+║          FEDERAL UNIVERSITY OF REGENTOS — SEEDED ✓                     ║
 ╠══════════════════════════════════════════════════════════════════════╣
-║  SUPER ADMIN      studox.edu@gmail.com         Studoxedu2026!         ║
+║  SUPER ADMIN      regentos.edu@gmail.com         Regentosedu2026!         ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║  ADMIN STAFF (email → password)                                       ║
 ║  vc@fusox.edu.ng                  VCFusox2026!  Vice Chancellor       ║
@@ -442,7 +442,7 @@ async function main() {
 ║  lec.helen@fusox.edu.ng           Sociology lecturer                  ║
 ║  lec.kayode@fusox.edu.ng          History lecturer                    ║
 ╠══════════════════════════════════════════════════════════════════════╣
-║  STUDENTS  (all: StudoxStu2026!)                                       ║
+║  STUDENTS  (all: RegentosStu2026!)                                       ║
 ║  stu.ada/emeka/hafsa@fusox.edu.ng             CS (3 students)         ║
 ║  stu.tunde/ngozi@fusox.edu.ng                 MTH (2 students)        ║
 ║  stu.ibrahim/amina@fusox.edu.ng               PHY (2 students)        ║

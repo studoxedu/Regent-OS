@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
 import { supabase } from '../../lib/supabase'
+import { startOnlinePayment, verifyOnlinePayment } from '../../lib/payments'
 import { useStudentContext } from '../../hooks/useStudentContext'
 import { cn } from '../../lib/utils'
 import type { AppUser } from '../../types'
@@ -21,15 +23,51 @@ export default function StudentFees({ appUser }: Props) {
   const ctx = useStudentContext(appUser)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading]   = useState(true)
+  const [paying, setPaying]     = useState<string | null>(null)
+  const [banner, setBanner]     = useState<{ msg: string; ok: boolean } | null>(null)
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!ctx.studentId) return
-    supabase.from('fee_invoices')
+    const { data } = await supabase.from('fee_invoices')
       .select('id, description, amount_due, amount_paid, status, due_date, created_at')
       .eq('student_id', ctx.studentId)
       .order('created_at', { ascending: false })
-      .then(({ data }) => { setInvoices((data ?? []) as Invoice[]); setLoading(false) })
+    setInvoices((data ?? []) as Invoice[])
+    setLoading(false)
   }, [ctx.studentId])
+
+  useEffect(() => { load() }, [load])
+
+  // Returning from Paystack checkout: ?reference=… (or trxref) is appended
+  useEffect(() => {
+    const params    = new URLSearchParams(window.location.search)
+    const reference = params.get('reference') ?? params.get('trxref')
+    if (!reference) return
+    window.history.replaceState({}, '', window.location.pathname)
+    verifyOnlinePayment(reference)
+      .then(status => {
+        if (status === 'success') {
+          setBanner({ msg: 'Payment received — your invoice has been updated.', ok: true })
+        } else if (status === 'pending') {
+          setBanner({ msg: 'Payment is still processing. Refresh in a moment.', ok: true })
+        } else {
+          setBanner({ msg: `Payment ${status}. You have not been charged, or contact the bursary.`, ok: false })
+        }
+        load()
+      })
+      .catch(e => setBanner({ msg: e.message, ok: false }))
+  }, [load])
+
+  async function payNow(invoiceId: string) {
+    setPaying(invoiceId)
+    try {
+      const url = await startOnlinePayment(invoiceId)
+      window.location.assign(url)
+    } catch (e) {
+      setBanner({ msg: e instanceof Error ? e.message : 'Could not start payment', ok: false })
+      setPaying(null)
+    }
+  }
 
   const totalDue    = invoices.reduce((s, i) => s + i.amount_due,  0)
   const totalPaid   = invoices.reduce((s, i) => s + i.amount_paid, 0)
@@ -47,6 +85,15 @@ export default function StudentFees({ appUser }: Props) {
   return (
     <div className="p-8 space-y-6 max-w-3xl">
       <div className="text-xl font-bold text-navy-900">Fees</div>
+
+      {banner && (
+        <div className={cn(
+          'text-sm rounded-sm border px-4 py-3',
+          banner.ok ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'
+        )}>
+          {banner.msg}
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
@@ -70,29 +117,41 @@ export default function StudentFees({ appUser }: Props) {
         {invoices.length === 0 ? (
           <div className="px-5 py-10 text-sm text-gray-400 text-center">No fee invoices found.</div>
         ) : (
-          invoices.map(inv => (
-            <div key={inv.id} className="px-5 py-4 border-b border-gray-50 last:border-0">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-navy-900 truncate">{inv.description ?? 'Fee Invoice'}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    Due: {inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+          invoices.map(inv => {
+            const payable = inv.status === 'unpaid' || inv.status === 'partial'
+            return (
+              <div key={inv.id} className="px-5 py-4 border-b border-gray-50 last:border-0">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-navy-900 truncate">{inv.description ?? 'Fee Invoice'}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      Due: {inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    </div>
                   </div>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="text-sm font-bold text-navy-900">₦{inv.amount_due.toLocaleString()}</div>
-                  {inv.amount_paid > 0 && (
-                    <div className="text-xs text-green-600">Paid: ₦{inv.amount_paid.toLocaleString()}</div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-sm font-bold text-navy-900">₦{inv.amount_due.toLocaleString()}</div>
+                    {inv.amount_paid > 0 && (
+                      <div className="text-xs text-green-600">Paid: ₦{inv.amount_paid.toLocaleString()}</div>
+                    )}
+                  </div>
+                  <span className={cn('text-[11px] font-bold px-2 py-1 rounded capitalize', statusColor(inv.status))}>
+                    {inv.status}
+                  </span>
+                  {payable && (
+                    <Button variant="amber" size="sm" onClick={() => payNow(inv.id)} disabled={paying !== null}>
+                      {paying === inv.id ? 'Redirecting…' : 'Pay Now'}
+                    </Button>
                   )}
                 </div>
-                <span className={cn('text-[11px] font-bold px-2 py-1 rounded capitalize', statusColor(inv.status))}>
-                  {inv.status}
-                </span>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </Card>
+
+      <div className="text-[11px] text-gray-400">
+        Online payments are processed securely by Paystack. Your invoice updates automatically once payment is confirmed.
+      </div>
     </div>
   )
 }

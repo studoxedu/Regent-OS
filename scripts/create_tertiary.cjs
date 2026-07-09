@@ -53,14 +53,14 @@ async function main() {
   // 1. Create tertiary school
   await runSQL(`
     INSERT INTO schools (id, group_id, name, stages_offered, tier_id)
-    VALUES ('${TERTIARY_SCHOOL_ID}', '${GROUP_ID}', 'Studox Polytechnic', ARRAY['nd','hnd'], 'pilot')
+    VALUES ('${TERTIARY_SCHOOL_ID}', '${GROUP_ID}', 'Regentos Polytechnic', ARRAY['nd','hnd'], 'pilot')
     ON CONFLICT (id) DO NOTHING
-  `, 'Tertiary school: Studox Polytechnic');
+  `, 'Tertiary school: Regentos Polytechnic');
 
   // 2. Create auth user via Management API
   const createRes = await new Promise((resolve, reject) => {
     const body = JSON.stringify({
-      email: 'admin@studox.ng',
+      email: 'admin@regentos.ng',
       password: 'haidarbuilds2026!',
       email_confirm: true,
       user_metadata: { first_name: 'School', last_name: 'Admin' },
@@ -83,7 +83,7 @@ async function main() {
   let userId = createRes.body.id;
   if (!userId) {
     // Check if already exists
-    const existing = await runSQL(`SELECT id FROM profiles WHERE email = 'admin@studox.ng'`, null);
+    const existing = await runSQL(`SELECT id FROM profiles WHERE email = 'admin@regentos.ng'`, null);
     userId = existing[0]?.id;
     if (!userId) {
       console.error('Create user response:', JSON.stringify(createRes.body).substring(0, 300));
@@ -97,7 +97,7 @@ async function main() {
   // 3. Profile
   await runSQL(`
     INSERT INTO profiles (id, email, first_name, last_name)
-    VALUES ('${userId}', 'admin@studox.ng', 'School', 'Admin')
+    VALUES ('${userId}', 'admin@regentos.ng', 'School', 'Admin')
     ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email
   `, 'Profile row');
 
@@ -110,13 +110,13 @@ async function main() {
       (SELECT id FROM offices WHERE name = 'school_admin')
     )
     ON CONFLICT DO NOTHING
-  `, 'Membership: school_admin @ Studox Polytechnic');
+  `, 'Membership: school_admin @ Regentos Polytechnic');
 
   console.log('\nTertiary user ready:');
-  console.log('  Email   :', 'admin@studox.ng');
+  console.log('  Email   :', 'admin@regentos.ng');
   console.log('  Password:', 'haidarbuilds2026!');
   console.log('  Office  : school_admin');
-  console.log('  School  : Studox Polytechnic (ND / HND)');
+  console.log('  School  : Regentos Polytechnic (ND / HND)');
   console.log('\nSign in at http://localhost:5173 with those credentials.');
 }
 

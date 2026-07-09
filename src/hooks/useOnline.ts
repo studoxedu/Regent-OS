@@ -19,12 +19,12 @@ export function useOnline() {
 
     window.addEventListener('online',          handleOnline)
     window.addEventListener('offline',         handleOffline)
-    window.addEventListener('studox:synced',   handleSynced)
+    window.addEventListener('regentos:synced',   handleSynced)
 
     return () => {
       window.removeEventListener('online',        handleOnline)
       window.removeEventListener('offline',       handleOffline)
-      window.removeEventListener('studox:synced', handleSynced)
+      window.removeEventListener('regentos:synced', handleSynced)
     }
   }, [])
 

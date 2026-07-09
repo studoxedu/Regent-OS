@@ -84,7 +84,7 @@ export default function SuperAdminDashboard({ appUser: _ }: { appUser: AppUser }
           Platform Overview
         </h1>
         <p className="text-[13px] text-gray-500 mt-1">
-          Studox OS operator console — onboard institutions, manage groups, configure access.
+          Regent OS operator console — onboard institutions, manage groups, configure access.
         </p>
       </div>
 

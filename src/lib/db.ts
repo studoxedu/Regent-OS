@@ -17,12 +17,12 @@ interface QueuedMutation {
   retries: number
 }
 
-class StudoxDB extends Dexie {
+class RegentosDB extends Dexie {
   responseCache!: Table<CachedResponse>
   mutationQueue!: Table<QueuedMutation>
 
   constructor() {
-    super('StudoxDB')
+    super('RegentosDB')
     this.version(1).stores({
       responseCache: '++id, key, timestamp',
       mutationQueue: '++id, timestamp, retries',
@@ -30,7 +30,7 @@ class StudoxDB extends Dexie {
   }
 }
 
-export const db = new StudoxDB()
+export const db = new RegentosDB()
 
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
 

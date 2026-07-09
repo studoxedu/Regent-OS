@@ -1,5 +1,5 @@
 /**
- * Creates a school_admin user for FUSOX (Federal University of Studox)
+ * Creates a school_admin user for FUSOX (Federal University of Regentos)
  */
 const https = require('https')
 

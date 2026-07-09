@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════
--- STUDOX OS — PHASE 1 MIGRATION
+-- REGENT OS — PHASE 1 MIGRATION
 -- Academic Calendar · Classes · Attendance · Fees · Guardians
 -- ═══════════════════════════════════════════════════════════
 

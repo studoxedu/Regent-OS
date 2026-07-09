@@ -53,6 +53,6 @@ export function startSyncManager(onSync?: (r: { success: number; failed: number 
   window.addEventListener('online', async () => {
     const result = await drainMutationQueue()
     onSync?.(result)
-    window.dispatchEvent(new CustomEvent('studox:synced', { detail: result }))
+    window.dispatchEvent(new CustomEvent('regentos:synced', { detail: result }))
   })
 }

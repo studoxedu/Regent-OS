@@ -255,7 +255,7 @@ async function run() {
       v_temp_password := upper(substring(encode(gen_random_bytes(4),'hex'),1,4))
                          || lower(substring(encode(gen_random_bytes(4),'hex'),1,4));
       v_email         := lower(replace(v_reg_number,'/','--'))
-                         || '@' || lower(v_inst_code) || '.studox.ng';
+                         || '@' || lower(v_inst_code) || '.regentos.ng';
 
       INSERT INTO auth.users (
         instance_id, id, aud, role,
@@ -487,8 +487,8 @@ async function run() {
     $fn$;
   `), 'flow_execute');
 
-  // ── 13. Create office instances for Studox Polytechnic ─────────────────
-  console.log('13. Creating office instances for Studox Polytechnic…');
+  // ── 13. Create office instances for Regentos Polytechnic ─────────────────
+  console.log('13. Creating office instances for Regentos Polytechnic…');
   ok(await sql(`
     INSERT INTO office_instances (institution_id, office_type_id, label)
     SELECT '${SCHOOL_ID}', ot.id, ot.label
@@ -581,7 +581,7 @@ async function run() {
     console.log(`   capabilities:       ${d.cap_count}`);
     console.log(`   office types:       ${d.ot_count}`);
     console.log(`   type→cap mappings:  ${d.otc_count}`);
-    console.log(`   office instances:   ${d.inst_offices} (Studox Polytechnic)`);
+    console.log(`   office instances:   ${d.inst_offices} (Regentos Polytechnic)`);
     console.log(`   office assignments: ${d.assignments}`);
     console.log(`   flow_execute fn:    ${d.has_flow_execute === '1' ? 'YES' : 'MISSING'}`);
   }

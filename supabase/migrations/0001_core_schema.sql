@@ -1,5 +1,5 @@
 -- ============================================================
--- Studox OS — Core Schema
+-- Regent OS — Core Schema
 -- ============================================================
 
 -- Audit sequence for human-readable refs

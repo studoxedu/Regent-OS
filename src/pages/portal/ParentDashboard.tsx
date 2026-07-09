@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { cn } from '../../lib/utils'
-import type { Guardian, GuardianLink, LearnerEnrollment, TermResult, FeeInvoice, AttendanceRecord } from '../../types'
+import type { Guardian, GuardianLink, LearnerEnrollment, TermResult, FeeInvoice, AttendanceRecord, GuardianNotification } from '../../types'
 
 interface Props { guardianEmail: string; onSignOut: () => void }
 
@@ -14,7 +14,7 @@ interface LearnerView {
   attendance: AttendanceRecord[]
 }
 
-type Tab = 'results' | 'fees' | 'attendance'
+type Tab = 'results' | 'fees' | 'attendance' | 'alerts'
 
 export default function ParentDashboard({ guardianEmail, onSignOut }: Props) {
   const [guardian, setGuardian]     = useState<Guardian | null>(null)
@@ -22,6 +22,7 @@ export default function ParentDashboard({ guardianEmail, onSignOut }: Props) {
   const [activeLearner, setActiveLearner] = useState<number>(0)
   const [tab, setTab]               = useState<Tab>('results')
   const [loading, setLoading]       = useState(true)
+  const [alerts, setAlerts]         = useState<GuardianNotification[]>([])
 
   useEffect(() => {
     async function load() {
@@ -75,10 +76,33 @@ export default function ParentDashboard({ guardianEmail, onSignOut }: Props) {
       )
 
       setLearners(views)
+
+      // School alerts (attendance etc.) addressed to this guardian
+      const { data: notifs } = await supabase
+        .from('guardian_notifications')
+        .select('*')
+        .eq('guardian_id', g.id)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      setAlerts((notifs ?? []) as GuardianNotification[])
+
       setLoading(false)
     }
     load()
   }, [guardianEmail])
+
+  const unreadAlerts = alerts.filter(a => !a.is_read).length
+
+  async function openAlerts() {
+    setTab('alerts')
+    if (unreadAlerts === 0 || !guardian) return
+    await supabase
+      .from('guardian_notifications')
+      .update({ is_read: true })
+      .eq('guardian_id', guardian.id)
+      .eq('is_read', false)
+    setAlerts(prev => prev.map(a => ({ ...a, is_read: true })))
+  }
 
   const current = learners[activeLearner]
 
@@ -118,7 +142,7 @@ export default function ParentDashboard({ guardianEmail, onSignOut }: Props) {
       {/* Header */}
       <div className="bg-navy-900 px-6 py-4 flex items-center justify-between">
         <div>
-          <div className="text-white font-bold text-sm">Studox Parent Portal</div>
+          <div className="text-white font-bold text-sm">Regent OS Parent Portal</div>
           <div className="text-navy-400 text-xs mt-0.5">{guardianEmail}</div>
         </div>
         <button onClick={onSignOut} className="text-navy-400 hover:text-white text-xs">Sign out</button>
@@ -170,11 +194,14 @@ export default function ParentDashboard({ guardianEmail, onSignOut }: Props) {
 
             {/* Tabs */}
             <div className="flex gap-1 border-b border-gray-200">
-              {(['results','fees','attendance'] as Tab[]).map(t => (
-                <button key={t} onClick={() => setTab(t)}
+              {(['results','fees','attendance','alerts'] as Tab[]).map(t => (
+                <button key={t} onClick={() => t === 'alerts' ? openAlerts() : setTab(t)}
                   className={`px-4 py-2.5 text-sm font-semibold capitalize border-b-2 -mb-px transition-colors ${
                     tab === t ? 'border-navy-800 text-navy-900' : 'border-transparent text-gray-400 hover:text-navy-700'}`}>
-                  {t === 'results' ? 'Results' : t === 'fees' ? 'Fees' : 'Attendance'}
+                  {t === 'results' ? 'Results' : t === 'fees' ? 'Fees' : t === 'attendance' ? 'Attendance' : 'Alerts'}
+                  {t === 'alerts' && unreadAlerts > 0 && (
+                    <span className="ml-1.5 text-[10px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5">{unreadAlerts}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -250,6 +277,32 @@ export default function ParentDashboard({ guardianEmail, onSignOut }: Props) {
                     )}
                   </tbody>
                 </table>
+              </Card>
+            )}
+
+            {tab === 'alerts' && (
+              <Card>
+                <CardHeader title="School Alerts" meta="Attendance and other notices" />
+                <div className="divide-y divide-gray-50">
+                  {alerts.map(a => (
+                    <div key={a.id} className="px-5 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          'w-1.5 h-1.5 rounded-full flex-shrink-0',
+                          a.type === 'alert' ? 'bg-red-500' : a.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-400'
+                        )} />
+                        <span className="text-sm font-semibold text-navy-900">{a.title}</span>
+                        <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0">
+                          {new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      {a.body && <div className="text-xs text-gray-500 mt-1 ml-3.5">{a.body}</div>}
+                    </div>
+                  ))}
+                  {alerts.length === 0 && (
+                    <div className="px-5 py-8 text-center text-sm text-gray-400">No alerts yet.</div>
+                  )}
+                </div>
               </Card>
             )}
 

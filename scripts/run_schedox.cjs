@@ -79,7 +79,7 @@ async function run() {
     END $$;
   `),'exam_entries');
 
-  console.log('4. Seeding a test venue for Studox Polytechnic…');
+  console.log('4. Seeding a test venue for Regentos Polytechnic…');
   ok(await sql(`
     INSERT INTO venues (institution_id, name, capacity, venue_type)
     VALUES ('${SCHOOL_ID}', 'LT 1 — Main Lecture Theatre', 200, 'hall'),

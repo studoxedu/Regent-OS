@@ -14,7 +14,7 @@ function sql(q) {
 function ok(r,s){if(r&&r.error){console.error(`FAIL[${s}]:`,r.error);process.exit(1);}console.log('   OK');}
 
 async function run() {
-  console.log('Phase 7 — Studox Student Portal DB\n');
+  console.log('Phase 7 — Regent OS Student Portal DB\n');
 
   console.log('1. auth_user_id on students table…');
   ok(await sql(`

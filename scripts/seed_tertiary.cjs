@@ -4,7 +4,7 @@ const PAT         = process.env.SUPABASE_PAT;
 const PROJECT_REF = 'fghdgtihpvaehykgqgro';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-const SCHOOL_ID = '00000000-0000-0000-0000-000000000003'; // Studox Polytechnic
+const SCHOOL_ID = '00000000-0000-0000-0000-000000000003'; // Regentos Polytechnic
 
 function sql(query) {
   return new Promise((resolve, reject) => {
@@ -84,7 +84,7 @@ async function upsertAndGet(insertSql, selectSql, label) {
 }
 
 async function main() {
-  console.log('\n=== Studox Polytechnic — Tertiary Seed ===\n');
+  console.log('\n=== Regentos Polytechnic — Tertiary Seed ===\n');
 
   // ── 0. Schema fix: add missing columns to courses ──────────────
   console.log('0. Patching courses table schema…');
@@ -164,15 +164,15 @@ async function main() {
 
   // ── 7. Lecturer ───────────────────────────────────────────────
   console.log('\n7. Lecturer account…');
-  const lecId = await getOrCreateUser('lecturer@studox.ng', 'haidarbuilds2026!', 'Dr. Amaka', 'Obi', 'Lecturer');
-  await sql(`INSERT INTO profiles (id, email, first_name, last_name) VALUES ('${lecId}', 'lecturer@studox.ng', 'Dr. Amaka', 'Obi') ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email`);
+  const lecId = await getOrCreateUser('lecturer@regentos.ng', 'haidarbuilds2026!', 'Dr. Amaka', 'Obi', 'Lecturer');
+  await sql(`INSERT INTO profiles (id, email, first_name, last_name) VALUES ('${lecId}', 'lecturer@regentos.ng', 'Dr. Amaka', 'Obi') ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email`);
   await sql(`INSERT INTO memberships (profile_id, school_id, office_id) VALUES ('${lecId}', '${SCHOOL_ID}', (SELECT id FROM offices WHERE name = 'lecturer')) ON CONFLICT DO NOTHING`);
-  console.log('  ✓ lecturer@studox.ng → lecturer office');
+  console.log('  ✓ lecturer@regentos.ng → lecturer office');
 
   // ── 8. Student ────────────────────────────────────────────────
   console.log('\n8. Student account…');
-  const stuId = await getOrCreateUser('student@studox.ng', 'haidarbuilds2026!', 'Emeka', 'Nwosu', 'Student');
-  await sql(`INSERT INTO profiles (id, email, first_name, last_name) VALUES ('${stuId}', 'student@studox.ng', 'Emeka', 'Nwosu') ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email`);
+  const stuId = await getOrCreateUser('student@regentos.ng', 'haidarbuilds2026!', 'Emeka', 'Nwosu', 'Student');
+  await sql(`INSERT INTO profiles (id, email, first_name, last_name) VALUES ('${stuId}', 'student@regentos.ng', 'Emeka', 'Nwosu') ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email`);
 
   // Create learner record
   const learnerId = await upsertAndGet(
@@ -190,22 +190,22 @@ async function main() {
 
   // Create student membership
   await sql(`INSERT INTO memberships (profile_id, school_id, office_id) VALUES ('${stuId}', '${SCHOOL_ID}', (SELECT id FROM offices WHERE name = 'student')) ON CONFLICT DO NOTHING`);
-  console.log('  ✓ student@studox.ng → student office');
+  console.log('  ✓ student@regentos.ng → student office');
 
   // ── Summary ────────────────────────────────────────────────────
   console.log(`
 ╔════════════════════════════════════════════════════════╗
-║        SEED COMPLETE — Studox Polytechnic              ║
+║        SEED COMPLETE — Regentos Polytechnic              ║
 ╠════════════════════════════════════════════════════════╣
 ║  SCHOOL ADMIN  haidarbuilds@gmail.com                  ║
 ║  (your existing account, already seeded)               ║
 ╠════════════════════════════════════════════════════════╣
-║  STUDENT       student@studox.ng                       ║
+║  STUDENT       student@regentos.ng                       ║
 ║  Password      haidarbuilds2026!                       ║
 ║  Name          Emeka Nwosu  (ND, active)               ║
 ║  Enrollment ID ${enrollId.slice(0,8)}…            ║
 ╠════════════════════════════════════════════════════════╣
-║  LECTURER      lecturer@studox.ng                      ║
+║  LECTURER      lecturer@regentos.ng                      ║
 ║  Password      haidarbuilds2026!                       ║
 ║  Name          Dr. Amaka Obi                           ║
 ╠════════════════════════════════════════════════════════╣

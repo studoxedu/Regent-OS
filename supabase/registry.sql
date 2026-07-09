@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- STUDOX TERTIARY — PHASE 1: REGISTRY
+-- REGENTOS TERTIARY — PHASE 1: REGISTRY
 -- ═══════════════════════════════════════════════════════════════════════════
 -- K12 (SchoolMasterPro) tables are UNTOUCHED.
 -- This migration only adds to / creates new tables for the tertiary Registry.
@@ -147,7 +147,7 @@ BEGIN
   v_temp_password := upper(substring(encode(gen_random_bytes(4), 'hex'), 1, 4))
                      || lower(substring(encode(gen_random_bytes(4), 'hex'), 1, 4));
   v_email         := lower(replace(v_reg_number, '/', '-'))
-                     || '@' || lower(v_inst_code) || '.studox.ng';
+                     || '@' || lower(v_inst_code) || '.regentos.ng';
 
   -- Create Supabase auth user
   INSERT INTO auth.users (

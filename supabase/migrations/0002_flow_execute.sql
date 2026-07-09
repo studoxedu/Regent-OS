@@ -1,5 +1,5 @@
 -- ============================================================
--- Studox OS — flow_execute: the only write path for governance data
+-- Regent OS — flow_execute: the only write path for governance data
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION flow_execute(

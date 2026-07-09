@@ -1,5 +1,5 @@
 -- ============================================================
--- Studox OS — Full Setup (run once in Supabase SQL Editor)
+-- Regent OS — Full Setup (run once in Supabase SQL Editor)
 -- https://supabase.com → your project → SQL Editor → paste → Run
 -- ============================================================
 

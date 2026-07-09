@@ -21,8 +21,8 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//, /^\/storage\//],
       },
       manifest: {
-        name: 'Studox OS',
-        short_name: 'Studox',
+        name: 'Regent OS',
+        short_name: 'Regent OS',
         description: 'Institutional Management Platform',
         theme_color: '#0f172a',
         background_color: '#ffffff',

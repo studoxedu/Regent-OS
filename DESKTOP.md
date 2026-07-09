@@ -1,4 +1,4 @@
-# Studox OS — Desktop Build
+# Regent OS — Desktop Build
 
 Two desktop wrappers are scaffolded. Pick one.
 

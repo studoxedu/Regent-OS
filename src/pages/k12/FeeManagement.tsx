@@ -177,7 +177,7 @@ export default function FeeManagement({ appUser }: Props) {
         <div class="row"><span class="label">Method:</span><span>${method.toUpperCase()}</span></div>
         <div class="row"><span class="label">Balance After:</span><span>₦${(invoice.amount_due - invoice.amount_paid - amount).toLocaleString()}</span></div>
         <div class="divider"></div>
-        <div class="footer">Thank you. Keep this receipt for your records.<br>Powered by Studox OS</div>
+        <div class="footer">Thank you. Keep this receipt for your records.<br>Powered by Regent OS</div>
         <script>window.onload = () => { window.print(); }<\/script>
       </body></html>
     `)

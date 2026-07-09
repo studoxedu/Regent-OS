@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════
--- STUDOX OS — PHASE 2 MIGRATION
+-- REGENT OS — PHASE 2 MIGRATION
 -- K12 Timetable · Course Registration · Notifications
 -- ═══════════════════════════════════════════════════════════
 

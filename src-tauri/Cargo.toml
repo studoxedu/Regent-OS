@@ -1,11 +1,11 @@
 [package]
-name = "studox"
+name = "regentos"
 version = "0.1.0"
-description = "Studox OS Desktop"
+description = "Regent OS Desktop"
 edition = "2021"
 
 [lib]
-name = "studox_lib"
+name = "regentos_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

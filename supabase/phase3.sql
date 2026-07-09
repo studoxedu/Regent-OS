@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════
--- STUDOX OS — PHASE 3 MIGRATION
+-- REGENT OS — PHASE 3 MIGRATION
 -- Staff Profiles · Payroll · Library · Announcements
 -- ═══════════════════════════════════════════════════════════
 

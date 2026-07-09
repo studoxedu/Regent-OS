@@ -71,6 +71,9 @@ import StaffManagement from './pages/shared/StaffManagement'
 import Payroll         from './pages/shared/Payroll'
 import Library         from './pages/shared/Library'
 import Announcements   from './pages/shared/Announcements'
+import Messages        from './pages/shared/Messages'
+import CBT             from './pages/shared/CBT'
+import StudentTests    from './pages/student/Tests'
 
 // Parent portal
 import ParentLogin     from './pages/portal/ParentLogin'
@@ -167,6 +170,8 @@ function ProtectedApp() {
         <Route path="/k12/payroll"         element={<Payroll          appUser={appUser} />} />
         <Route path="/k12/library"         element={<Library          appUser={appUser} />} />
         <Route path="/k12/announcements"   element={<Announcements    appUser={appUser} />} />
+        <Route path="/k12/messages"        element={<Messages         appUser={appUser} />} />
+        <Route path="/k12/cbt"             element={<CBT              appUser={appUser} />} />
 
         {/* ── Tertiary ── */}
         <Route path="/tertiary"               element={<TertiaryDashboard       appUser={appUser} />} />
@@ -194,6 +199,8 @@ function ProtectedApp() {
         <Route path="/tertiary/staff-mgmt"        element={<StaffManagement      appUser={appUser} />} />
         <Route path="/tertiary/payroll"           element={<Payroll              appUser={appUser} />} />
         <Route path="/tertiary/library"           element={<Library              appUser={appUser} />} />
+        <Route path="/tertiary/messages"          element={<Messages             appUser={appUser} />} />
+        <Route path="/tertiary/cbt"               element={<CBT                  appUser={appUser} />} />
 
         {/* ── Student portal ── */}
         <Route path="/student"               element={<StudentHome          appUser={appUser} />} />
@@ -208,6 +215,8 @@ function ProtectedApp() {
         <Route path="/student/accommodation" element={<StudentAccommodation appUser={appUser} />} />
         <Route path="/student/library"       element={<Library              appUser={appUser} />} />
         <Route path="/student/profile"       element={<StudentProfile       appUser={appUser} />} />
+        <Route path="/student/messages"      element={<Messages             appUser={appUser} />} />
+        <Route path="/student/tests"         element={<StudentTests         appUser={appUser} />} />
 
         {/* ── Proprietor ── */}
         <Route path="/proprietor"            element={<ProprietorDashboard    appUser={appUser} />} />

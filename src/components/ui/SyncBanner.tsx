@@ -12,7 +12,7 @@ export function SyncBanner() {
   async function handleSync() {
     setSyncing(true)
     await drainMutationQueue()
-    window.dispatchEvent(new CustomEvent('studox:synced'))
+    window.dispatchEvent(new CustomEvent('regentos:synced'))
     setSyncing(false)
   }
 

@@ -1,5 +1,5 @@
 {
-  "name": "studox",
+  "name": "regentos",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -51,8 +51,8 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.studox.os",
-    "productName": "Studox OS",
+    "appId": "com.regentos.os",
+    "productName": "Regent OS",
     "files": ["dist/**/*", "electron/**/*"],
     "directories": { "output": "release" },
     "win": { "target": "nsis", "icon": "src-tauri/icons/icon.png" },

@@ -285,7 +285,7 @@ export default function SuperAdminGroups({ appUser: _ }: { appUser: AppUser }) {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h2 className="text-[16px] font-bold text-navy-900 mb-1">Assign Proprietor</h2>
             <p className="text-[13px] text-gray-500 mb-4">
-              {assignTarget.name} — the person must already have a Studox OS account.
+              {assignTarget.name} — the person must already have a Regent OS account.
             </p>
             <div className="space-y-3">
               <div>

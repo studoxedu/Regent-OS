@@ -31,7 +31,7 @@ function dbQuery(sql) {
 
 async function main() {
   // Step 1: create auth user via direct SQL (pgcrypto for password hashing)
-  console.log('Creating auth user studox.edu@gmail.com…')
+  console.log('Creating auth user regentos.edu@gmail.com…')
   const createSQL = `
     INSERT INTO auth.users (
       instance_id, id, aud, role, email,
@@ -44,8 +44,8 @@ async function main() {
       gen_random_uuid(),
       'authenticated',
       'authenticated',
-      'studox.edu@gmail.com',
-      crypt('Studoxedu2026!', gen_salt('bf')),
+      'regentos.edu@gmail.com',
+      crypt('Regentosedu2026!', gen_salt('bf')),
       now(),
       '{"provider":"email","providers":["email"]}',
       '{}',
@@ -66,7 +66,7 @@ async function main() {
     console.log('Creating profile…')
     const r2 = await dbQuery(`
       INSERT INTO public.profiles (id, email, global_role)
-      VALUES ('${userId}', 'studox.edu@gmail.com', 'super_admin')
+      VALUES ('${userId}', 'regentos.edu@gmail.com', 'super_admin')
       ON CONFLICT (id) DO UPDATE SET global_role = 'super_admin'
       RETURNING id, email, global_role;
     `)
@@ -74,13 +74,13 @@ async function main() {
   } else {
     // User might already exist, just find and update
     console.log('User may already exist — looking up by email in auth.users…')
-    const r3 = await dbQuery(`SELECT id FROM auth.users WHERE email = 'studox.edu@gmail.com'`)
+    const r3 = await dbQuery(`SELECT id FROM auth.users WHERE email = 'regentos.edu@gmail.com'`)
     console.log('Auth lookup:', JSON.stringify(r3))
     if (Array.isArray(r3) && r3.length > 0) {
       userId = r3[0].id
       const r4 = await dbQuery(`
         INSERT INTO public.profiles (id, email, global_role)
-        VALUES ('${userId}', 'studox.edu@gmail.com', 'super_admin')
+        VALUES ('${userId}', 'regentos.edu@gmail.com', 'super_admin')
         ON CONFLICT (id) DO UPDATE SET global_role = 'super_admin'
         RETURNING id, email, global_role;
       `)
@@ -93,7 +93,7 @@ async function main() {
     console.log('\nEnsuring password is set…')
     const r5 = await dbQuery(`
       UPDATE auth.users
-      SET encrypted_password = crypt('Studoxedu2026!', gen_salt('bf')),
+      SET encrypted_password = crypt('Regentosedu2026!', gen_salt('bf')),
           email_confirmed_at = COALESCE(email_confirmed_at, now()),
           updated_at = now()
       WHERE id = '${userId}'
@@ -102,7 +102,7 @@ async function main() {
     console.log('Password update:', JSON.stringify(r5))
   }
 
-  console.log('\nDone. Login: studox.edu@gmail.com / Studoxedu2026!')
+  console.log('\nDone. Login: regentos.edu@gmail.com / Regentosedu2026!')
 }
 
 main().catch(console.error)

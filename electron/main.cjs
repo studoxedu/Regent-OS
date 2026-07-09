@@ -10,7 +10,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     backgroundColor: '#ffffff',
-    title: 'Studox OS',
+    title: 'Regent OS',
     icon: path.join(__dirname, '../public/favicon.svg'),
     webPreferences: {
       contextIsolation: true,

@@ -44,7 +44,7 @@ async function main() {
       (SELECT id FROM offices WHERE name = 'school_admin')
     )
     ON CONFLICT DO NOTHING
-  `, 'Add tertiary membership (school_admin @ Studox Polytechnic)');
+  `, 'Add tertiary membership (school_admin @ Regentos Polytechnic)');
 
   // Verify all memberships
   const memberships = await runSQL(`

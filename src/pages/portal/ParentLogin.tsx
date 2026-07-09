@@ -42,7 +42,7 @@ export default function ParentLogin({ onSignIn: _onSignIn }: Props) {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="w-[400px]">
         <div className="text-center mb-8">
-          <div className="text-[22px] font-bold text-navy-900">Studox Parent Portal</div>
+          <div className="text-[22px] font-bold text-navy-900">Regent OS Parent Portal</div>
           <div className="text-sm text-gray-400 mt-1">Access your child's school records</div>
         </div>
 

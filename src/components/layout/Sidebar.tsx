@@ -72,6 +72,18 @@ function lecturerModules(offerings: LecturerOffering[] | undefined): NavSection[
       items: items.length > 0 ? items : [{ label: 'No courses assigned', to: '/tertiary/acadex' }],
     },
     {
+      key: 'cbt',
+      heading: 'CBT',
+      defaultTo: '/tertiary/cbt',
+      items: [{ label: 'Tests & Quizzes', to: '/tertiary/cbt' }],
+    },
+    {
+      key: 'messages',
+      heading: 'Messages',
+      defaultTo: '/tertiary/messages',
+      items: [{ label: 'Inbox', to: '/tertiary/messages' }],
+    },
+    {
       key: 'boards',
       heading: 'Boards',
       defaultTo: '/tertiary/boards',
@@ -86,6 +98,8 @@ const SENATE_BOARDS_ROLES = new Set(['school_admin', 'senate_secretary'])
 // ── Route → section key ───────────────────────────────────────────────────────
 function getActiveSectionKey(pathname: string, officeName?: string): string {
   if (pathname.startsWith('/tertiary/course-scores')) return 'my-courses'
+  if (pathname.startsWith('/tertiary/cbt'))      return officeName === 'lecturer' ? 'cbt' : 'acadex'
+  if (pathname.startsWith('/tertiary/messages')) return officeName === 'lecturer' ? 'messages' : 'operations'
   if (['/tertiary/setup','/tertiary/students','/tertiary/structure','/tertiary/staff','/tertiary/sessions'].some(p => pathname.startsWith(p))) return 'registry'
   if (['/tertiary/acadex','/tertiary/transcripts','/tertiary/grade-scales','/tertiary/course-reg','/tertiary/score-review'].some(p => pathname.startsWith(p))) return 'acadex'
   if (pathname.startsWith('/tertiary/senate'))   return 'senate'
@@ -121,6 +135,7 @@ function tertiaryModules(institutionType?: string | null, officeName?: string): 
         { label:'Offerings & Results', to:'/tertiary/acadex'       },
         { label:'Transcripts',         to:'/tertiary/transcripts'  },
         { label:'Grade Scales',        to:'/tertiary/grade-scales' },
+        { label:'CBT Tests',           to:'/tertiary/cbt'          },
       ]},
     { key:'senate',    heading:labels.senate,    defaultTo:'/tertiary/senate',
       items:[
@@ -139,6 +154,7 @@ function tertiaryModules(institutionType?: string | null, officeName?: string): 
       items:[
         { label:'Fees',          to:'/tertiary/fees'          },
         { label:'Announcements', to:'/tertiary/announcements' },
+        { label:'Messages',      to:'/tertiary/messages'      },
         { label:'Library',       to:'/tertiary/library'       },
       ]},
     { key:'hr',        heading:'HR',             defaultTo:'/tertiary/staff-mgmt',
@@ -171,23 +187,28 @@ function k12Modules(): NavSection[] {
         { label:'Results',      to:'/k12/results'      },
         { label:'Report Cards', to:'/k12/report-cards' },
         { label:'Timetable',    to:'/k12/timetable'    },
+        { label:'CBT Tests',    to:'/k12/cbt'          },
       ]},
     { key:'finance',   heading:'Finance',    defaultTo:'/k12/fee-management',
       items:[{ label:'Fee Management', to:'/k12/fee-management' }] },
     { key:'hr',        heading:'HR',         defaultTo:'/k12/staff',
       items:[{ label:'Staff Management', to:'/k12/staff' },{ label:'Payroll', to:'/k12/payroll' }] },
     { key:'resources', heading:'Resources',  defaultTo:'/k12/library',
-      items:[{ label:'Library', to:'/k12/library' },{ label:'Announcements', to:'/k12/announcements' }] },
+      items:[
+        { label:'Library',       to:'/k12/library'       },
+        { label:'Announcements', to:'/k12/announcements' },
+        { label:'Messages',      to:'/k12/messages'      },
+      ]},
   ]
 }
 
 function getK12ActiveKey(pathname: string): string {
   if (['/k12/calendar','/k12/classes'].some(p => pathname.startsWith(p))) return 'setup'
   if (['/k12/enrollment','/k12/attendance','/k12/guardians','/k12/transfers','/k12/promotion'].some(p => pathname.startsWith(p))) return 'learners'
-  if (['/k12/results','/k12/report-cards','/k12/timetable'].some(p => pathname.startsWith(p))) return 'academics'
+  if (['/k12/results','/k12/report-cards','/k12/timetable','/k12/cbt'].some(p => pathname.startsWith(p))) return 'academics'
   if (pathname.startsWith('/k12/fee-management') || pathname.startsWith('/k12/fees')) return 'finance'
   if (['/k12/staff','/k12/payroll'].some(p => pathname.startsWith(p))) return 'hr'
-  if (['/k12/library','/k12/announcements'].some(p => pathname.startsWith(p))) return 'resources'
+  if (['/k12/library','/k12/announcements','/k12/messages'].some(p => pathname.startsWith(p))) return 'resources'
   return 'overview'
 }
 
@@ -201,8 +222,10 @@ function studentModules(): NavSection[] {
         { label:'Courses',       to:'/student/courses'       },
         { label:'Timetable',     to:'/student/timetable'     },
         { label:'Materials',     to:'/student/materials'     },
+        { label:'Tests & CBT',   to:'/student/tests'         },
         { label:'Results',       to:'/student/results'       },
         { label:'Announcements', to:'/student/announcements' },
+        { label:'Messages',      to:'/student/messages'      },
       ]},
     { key:'finance',  heading:'Finance',  defaultTo:'/student/fees',
       items:[{ label:'Fees', to:'/student/fees' },{ label:'Transactions', to:'/student/transactions' }] },
@@ -217,7 +240,7 @@ function studentModules(): NavSection[] {
 }
 
 function getStudentActiveKey(pathname: string): string {
-  if (['/student/courses','/student/timetable','/student/materials','/student/results','/student/announcements'].some(p => pathname.startsWith(p))) return 'academic'
+  if (['/student/courses','/student/timetable','/student/materials','/student/tests','/student/results','/student/announcements','/student/messages'].some(p => pathname.startsWith(p))) return 'academic'
   if (['/student/fees','/student/transactions'].some(p => pathname.startsWith(p))) return 'finance'
   if (['/student/accommodation','/student/library'].some(p => pathname.startsWith(p))) return 'campus'
   if (pathname.startsWith('/student/profile')) return 'account'
@@ -293,8 +316,8 @@ export function Sidebar({ appUser, onSignOut, onSwitchMembership: _onSwitch, chi
   const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
 
   const brandName = isSuperAdmin
-    ? 'Studox OS'
-    : activeSchool?.name ?? activeGroup?.name ?? 'Studox OS'
+    ? 'Regent OS'
+    : activeSchool?.name ?? activeGroup?.name ?? 'Regent OS'
   const brandSub = isSuperAdmin
     ? 'Platform Admin'
     : isProprietor
