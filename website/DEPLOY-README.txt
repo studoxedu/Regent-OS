@@ -1,9 +1,9 @@
 RYSAN TECHNOLOGIES — WEBSITE (one domain, three pages)
 
 FILES
-  index.html      -> company home     (rysan.ng/)
-  regent-os.html  -> Regent OS product (rysan.ng/regent-os)
-  herald.html     -> Herald product    (rysan.ng/herald)
+  index.html      -> company home     (rysantech.com.ng/)
+  regent-os.html  -> Regent OS product (rysantech.com.ng/regent-os)
+  herald.html     -> Herald product    (rysantech.com.ng/herald)
   netlify.toml    -> clean-URL rules (Netlify only)
 
 DEPLOY (any static host)
@@ -14,9 +14,9 @@ DEPLOY (any static host)
     /regent-os.html (edit the nav links).
 
 BEFORE GOING LIVE — replace placeholders:
-  * Email hello@rysan.ng appears on every page -> use your real address.
-  * Domain: if not rysan.ng, update email + references. Herald can live at
-    rysan.ng/herald (herald.ng may be taken by newspapers).
+  * Email hello@rysantech.com.ng appears on every page -> use your real address.
+  * Domain: if not rysantech.com.ng, update email + references. Herald can live at
+    rysantech.com.ng/herald (herald.ng may be taken by newspapers).
   * Herald pricing is marked "indicative" -> confirm naira figures first.
   * Stats ("in the field", "2 products") -> soften if not yet deployed in
     real schools, before showing investors.
