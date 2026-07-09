@@ -20,14 +20,28 @@ interface StaffProfile {
   start_date: string | null
 }
 
+interface StaffCredential {
+  email: string
+  is_new_user: boolean
+  temp_password: string | null
+}
+
 const EMPLOYMENT_TYPES = [
   { value: 'full_time', label: 'Full Time' },
   { value: 'part_time', label: 'Part Time' },
   { value: 'contract',  label: 'Contract' },
 ]
 
+const K12_ROLE_LABELS: Record<string, string> = {
+  head_teacher:  'Head Teacher',
+  class_teacher: 'Class Teacher',
+  bursar:        'Bursar',
+}
+const K12_ROLES = Object.keys(K12_ROLE_LABELS)
+
 export default function StaffManagement({ appUser }: Props) {
   const schoolId = appUser.activeSchool?.id ?? ''
+  const isK12    = ['head_teacher', 'class_teacher', 'bursar'].includes(appUser.activeMembership?.office?.name ?? '')
 
   const [staff, setStaff]         = useState<Membership[]>([])
   const [profiles, setProfiles]   = useState<Record<string, StaffProfile>>({})
@@ -43,6 +57,13 @@ export default function StaffManagement({ appUser }: Props) {
   const [gradeName, setGradeName]           = useState('')
   const [gradeBasic, setGradeBasic]         = useState('')
   const [savingGrade, setSavingGrade]       = useState(false)
+
+  // Add Staff (K12 onboarding)
+  const [showAdd,    setShowAdd]    = useState(false)
+  const [addForm,    setAddForm]    = useState({ firstName: '', lastName: '', email: '', role: K12_ROLES[0] })
+  const [adding,     setAdding]     = useState(false)
+  const [addError,   setAddError]   = useState('')
+  const [credential, setCredential] = useState<StaffCredential | null>(null)
 
   function flash(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type }); setTimeout(() => setToast(null), 4000)
@@ -128,16 +149,74 @@ export default function StaffManagement({ appUser }: Props) {
     return g ? `${g.name} (₦${Number(g.basic_pay).toLocaleString('en-NG')})` : '—'
   }
 
+  async function handleAddStaff() {
+    if (!addForm.firstName.trim() || !addForm.lastName.trim() || !addForm.email.trim()) {
+      setAddError('First name, last name and email are required.'); return
+    }
+    setAdding(true); setAddError('')
+    const { data, error } = await supabase.rpc('create_staff_member', {
+      p_email:       addForm.email.trim().toLowerCase(),
+      p_first_name:  addForm.firstName.trim(),
+      p_last_name:   addForm.lastName.trim(),
+      p_office_name: addForm.role,
+      p_school_id:   schoolId,
+    })
+    setAdding(false)
+    if (error) { setAddError(error.message); return }
+    setCredential({ email: data.email, is_new_user: data.is_new_user, temp_password: data.temp_password })
+    setShowAdd(false)
+    setAddForm({ firstName: '', lastName: '', email: '', role: K12_ROLES[0] })
+    loadAll()
+  }
+
   return (
     <>
       <Topbar title="Staff Management" meta={appUser.activeSchool?.name}
-        actions={<Button variant="ghost" size="sm" onClick={() => setShowGradeForm(v => !v)}>
-          {showGradeForm ? 'Close' : '+ Salary Grade'}
-        </Button>}
+        actions={
+          <div className="flex gap-2">
+            {isK12 && (
+              <Button variant="primary" size="sm" onClick={() => { setShowAdd(true); setAddError('') }}>
+                + Add Staff
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => setShowGradeForm(v => !v)}>
+              {showGradeForm ? 'Close' : '+ Salary Grade'}
+            </Button>
+          </div>
+        }
       />
 
       <div className="p-8 space-y-6">
         {toast && <Alert type={toast.type === 'error' ? 'danger' : 'success'}>{toast.msg}</Alert>}
+
+        {/* Credential banner — shown once after onboarding a new staff account */}
+        {credential && (
+          <Card className="p-5 bg-green-50 border-green-200">
+            <div className="flex justify-between items-start">
+              <div className="space-y-2">
+                <div className="text-sm font-bold text-green-800">
+                  {credential.is_new_user ? 'Staff account created' : 'Role assigned to existing user'}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-[10px] text-green-600 uppercase tracking-widest mb-1">Email</div>
+                    <div className="font-mono text-green-800 text-sm">{credential.email}</div>
+                  </div>
+                  {credential.temp_password && (
+                    <div>
+                      <div className="text-[10px] text-green-600 uppercase tracking-widest mb-1">Temp Password</div>
+                      <div className="font-mono font-bold text-green-900 text-sm tracking-widest">{credential.temp_password}</div>
+                    </div>
+                  )}
+                </div>
+                {credential.temp_password && (
+                  <div className="text-xs text-green-600">Share these credentials with the staff member. The password is shown once only.</div>
+                )}
+              </div>
+              <button onClick={() => setCredential(null)} className="text-green-400 hover:text-green-700 text-lg ml-4 cursor-pointer">×</button>
+            </div>
+          </Card>
+        )}
 
         {/* Salary grade quick-add */}
         {showGradeForm && (
@@ -265,6 +344,63 @@ export default function StaffManagement({ appUser }: Props) {
           )}
         </Card>
       </div>
+
+      {/* Add Staff modal (K12 onboarding) */}
+      {showAdd && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+              <div className="font-bold text-navy-900">Add Staff Member</div>
+              <button onClick={() => setShowAdd(false)} className="text-gray-400 hover:text-gray-700 text-xl cursor-pointer">×</button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              {addError && <Alert type="danger">{addError}</Alert>}
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="First Name *">
+                  <Input
+                    value={addForm.firstName}
+                    onChange={e => setAddForm(f => ({ ...f, firstName: e.target.value }))}
+                    autoFocus
+                  />
+                </Field>
+                <Field label="Last Name *">
+                  <Input
+                    value={addForm.lastName}
+                    onChange={e => setAddForm(f => ({ ...f, lastName: e.target.value }))}
+                  />
+                </Field>
+              </div>
+
+              <Field label="Email Address *">
+                <Input
+                  type="email"
+                  value={addForm.email}
+                  onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="staff@school.edu.ng"
+                />
+              </Field>
+
+              <Field label="Role *">
+                <Select value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}
+                  options={K12_ROLES.map(r => ({ value: r, label: K12_ROLE_LABELS[r] }))} />
+              </Field>
+
+              <div className="text-[11px] text-gray-400 bg-gray-50 rounded p-3 leading-relaxed">
+                If this is a new user, a temporary password will be generated. If the email already exists in the system, the role will be assigned to the existing account.
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+              <Button variant="ghost" size="sm" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button variant="primary" size="sm" onClick={handleAddStaff} disabled={adding}>
+                {adding ? 'Adding…' : 'Add Staff'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
