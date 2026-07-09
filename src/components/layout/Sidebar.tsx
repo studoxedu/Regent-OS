@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import { getInstitutionLabels } from '../../lib/institution'
+import { isK12Office, K12_OFFICE_SECTIONS } from '../../lib/roles'
 import type { AppUser, LecturerOffering } from '../../types'
 import type { ReactNode } from 'react'
 
@@ -167,23 +168,23 @@ function tertiaryModules(institutionType?: string | null, officeName?: string): 
   return allowed ? all.filter(s => allowed.includes(s.key)) : all
 }
 
-// ── K12 (kept flat — fewer sections) ─────────────────────────────────────────
-function k12Modules(): NavSection[] {
-  return [
+// ── K12 — sections filtered by office (see K12_OFFICE_SECTIONS) ───────────────
+function k12Modules(officeName?: string): NavSection[] {
+  const all: NavSection[] = [
     { key:'overview',  heading:'Overview',   defaultTo:'/k12',
       items:[{ label:'Dashboard', to:'/k12' },{ label:'Audit Log', to:'/k12/audit' }] },
     { key:'setup',     heading:'Setup',      defaultTo:'/k12/calendar',
       items:[{ label:'Academic Calendar', to:'/k12/calendar' },{ label:'Classes & Subjects', to:'/k12/classes' }] },
-    { key:'learners',  heading:'Learners',   defaultTo:'/k12/enrollment',
+    { key:'admissions', heading:'Admissions & Records', defaultTo:'/k12/enrollment',
       items:[
         { label:'Enrollment',  to:'/k12/enrollment'   },
-        { label:'Attendance',  to:'/k12/attendance'   },
         { label:'Guardians',   to:'/k12/guardians'    },
         { label:'Transfers',   to:'/k12/transfers'    },
         { label:'Promotion',   to:'/k12/promotion'    },
       ]},
     { key:'academics', heading:'Academics',  defaultTo:'/k12/results',
       items:[
+        { label:'Attendance',   to:'/k12/attendance'   },
         { label:'Results',      to:'/k12/results'      },
         { label:'Report Cards', to:'/k12/report-cards' },
         { label:'Timetable',    to:'/k12/timetable'    },
@@ -200,12 +201,15 @@ function k12Modules(): NavSection[] {
         { label:'Messages',      to:'/k12/messages'      },
       ]},
   ]
+
+  const allowed = K12_OFFICE_SECTIONS[officeName ?? '']   // null / undefined = show all
+  return allowed ? all.filter(s => allowed.includes(s.key)) : all
 }
 
 function getK12ActiveKey(pathname: string): string {
   if (['/k12/calendar','/k12/classes'].some(p => pathname.startsWith(p))) return 'setup'
-  if (['/k12/enrollment','/k12/attendance','/k12/guardians','/k12/transfers','/k12/promotion'].some(p => pathname.startsWith(p))) return 'learners'
-  if (['/k12/results','/k12/report-cards','/k12/timetable','/k12/cbt'].some(p => pathname.startsWith(p))) return 'academics'
+  if (['/k12/enrollment','/k12/guardians','/k12/transfers','/k12/promotion'].some(p => pathname.startsWith(p))) return 'admissions'
+  if (['/k12/attendance','/k12/results','/k12/report-cards','/k12/timetable','/k12/cbt'].some(p => pathname.startsWith(p))) return 'academics'
   if (pathname.startsWith('/k12/fee-management') || pathname.startsWith('/k12/fees')) return 'finance'
   if (['/k12/staff','/k12/payroll'].some(p => pathname.startsWith(p))) return 'hr'
   if (['/k12/library','/k12/announcements','/k12/messages'].some(p => pathname.startsWith(p))) return 'resources'
@@ -284,7 +288,7 @@ export function Sidebar({ appUser, onSignOut, onSwitchMembership: _onSwitch, chi
   const officeName   = activeMembership?.office?.name ?? ''
   const isSuperAdmin = officeName === 'super_admin'
   const isProprietor = officeName === 'proprietor'
-  const isK12        = ['head_teacher', 'class_teacher', 'bursar'].includes(officeName)
+  const isK12        = isK12Office(officeName)
   const isStudent    = officeName === 'student'
 
   // ── Active section key (drives accordion) ──
@@ -304,7 +308,7 @@ export function Sidebar({ appUser, onSignOut, onSwitchMembership: _onSwitch, chi
     : isProprietor
     ? proprietorModules(appUser.proprietorSchools ?? [])
     : isK12
-    ? k12Modules()
+    ? k12Modules(officeName)
     : isStudent
     ? studentModules()
     : isLecturer

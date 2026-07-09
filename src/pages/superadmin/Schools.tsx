@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
+import { K12_OFFICES, K12_OFFICE_LABELS } from '../../lib/roles'
 import type { AppUser } from '../../types'
 
 interface SchoolRow {
@@ -26,11 +27,10 @@ const SCHOOL_PRESETS = [
   { label: 'Monotechnic',          stages: ['nd'],          institution_type: 'monotechnic' },
 ]
 
-const K12_ADMIN_ROLES: Record<string, string> = {
-  head_teacher:  'Head Teacher',
-  class_teacher: 'Class Teacher',
-  bursar:        'Bursar',
-}
+// K-12 offices seedable as a first admin (central list); Head Teacher first
+const K12_ADMIN_ROLES: Record<string, string> = Object.fromEntries(
+  K12_OFFICES.map(o => [o, K12_OFFICE_LABELS[o]])
+)
 
 const TERTIARY_ADMIN_ROLES: Record<string, string> = {
   school_admin:       'School Administrator',

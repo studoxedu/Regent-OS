@@ -8,7 +8,7 @@ export type GovernanceMode = 'k12' | 'tertiary'
 
 export type OfficeType =
   | 'school_admin' | 'dean' | 'hod' | 'exam_officer' | 'lecturer' | 'student'
-  | 'head_teacher' | 'class_teacher' | 'bursar'
+  | 'head_teacher' | 'class_teacher' | 'bursar' | 'k12_exam_officer' | 'k12_registrar'
   | 'proprietor'
   | 'super_admin'
   | 'senate_secretary' | 'registrar' | 'finance_officer' | 'hr_officer'

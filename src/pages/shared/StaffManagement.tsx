@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { Input, Select, Field } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/utils'
+import { isK12Office, K12_OFFICES, K12_OFFICE_LABELS } from '../../lib/roles'
 import type { AppUser, Membership } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -32,16 +33,12 @@ const EMPLOYMENT_TYPES = [
   { value: 'contract',  label: 'Contract' },
 ]
 
-const K12_ROLE_LABELS: Record<string, string> = {
-  head_teacher:  'Head Teacher',
-  class_teacher: 'Class Teacher',
-  bursar:        'Bursar',
-}
-const K12_ROLES = Object.keys(K12_ROLE_LABELS)
+// Roles a K-12 school can assign to new staff (from the central list)
+const K12_ROLES = K12_OFFICES as readonly string[]
 
 export default function StaffManagement({ appUser }: Props) {
   const schoolId = appUser.activeSchool?.id ?? ''
-  const isK12    = ['head_teacher', 'class_teacher', 'bursar'].includes(appUser.activeMembership?.office?.name ?? '')
+  const isK12    = isK12Office(appUser.activeMembership?.office?.name ?? '')
 
   const [staff, setStaff]         = useState<Membership[]>([])
   const [profiles, setProfiles]   = useState<Record<string, StaffProfile>>({})
@@ -384,7 +381,7 @@ export default function StaffManagement({ appUser }: Props) {
 
               <Field label="Role *">
                 <Select value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}
-                  options={K12_ROLES.map(r => ({ value: r, label: K12_ROLE_LABELS[r] }))} />
+                  options={K12_ROLES.map(r => ({ value: r, label: K12_OFFICE_LABELS[r] }))} />
               </Field>
 
               <div className="text-[11px] text-gray-400 bg-gray-50 rounded p-3 leading-relaxed">

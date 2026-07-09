@@ -5,6 +5,7 @@ import Login from './pages/auth/Login'
 import { AppLayout } from './components/layout/AppLayout'
 import { supabase } from './lib/supabase'
 import { OFFICE_DEFAULT_ROUTE } from './components/layout/Sidebar'
+import { isK12Office } from './lib/roles'
 
 // K12 pages
 import K12Dashboard   from './pages/k12/Dashboard'
@@ -114,7 +115,7 @@ function ProtectedApp() {
     const target = appUser?.memberships.find(m => m.id === membershipId)
     const office = target?.office?.name ?? ''
     const route  = office === 'proprietor' ? '/proprietor'
-      : ['head_teacher', 'class_teacher', 'bursar'].includes(office) ? '/k12'
+      : isK12Office(office) ? '/k12'
       : office === 'student' ? '/student'
       : '/tertiary'
     navigate(route, { replace: true })
@@ -133,7 +134,7 @@ function ProtectedApp() {
   const officeName   = appUser.activeMembership?.office?.name ?? ''
   const isSuperAdmin = officeName === 'super_admin'
   const isProprietor = officeName === 'proprietor'
-  const isK12        = ['head_teacher', 'class_teacher', 'bursar'].includes(officeName)
+  const isK12        = isK12Office(officeName)
   const isStudent    = officeName === 'student'
   const isLecturer   = officeName === 'lecturer'
   // Lecturers land on their first assigned course; fall back to acadex if none

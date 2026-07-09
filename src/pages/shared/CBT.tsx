@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { Input, Select, Field, Grid2, Textarea } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/utils'
+import { isK12Office } from '../../lib/roles'
 import type { AppUser, CbtTest, CbtQuestion, CbtAttempt, K12Class } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -25,7 +26,7 @@ const BLANK_QUESTION = { prompt: '', options: ['', '', '', ''], correctIndex: 0,
 export default function CBT({ appUser }: Props) {
   const schoolId = appUser.activeSchool?.id ?? ''
   const myId     = appUser.profile.id
-  const isK12    = ['head_teacher', 'class_teacher', 'bursar'].includes(appUser.activeMembership?.office?.name ?? '')
+  const isK12    = isK12Office(appUser.activeMembership?.office?.name ?? '')
 
   const [tests, setTests]       = useState<CbtTest[]>([])
   const [classes, setClasses]   = useState<K12Class[]>([])
