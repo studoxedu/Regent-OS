@@ -1,0 +1,8 @@
+[[redirects]]
+  from = "/regent-os"
+  to = "/regent-os.html"
+  status = 200
+[[redirects]]
+  from = "/herald"
+  to = "/herald.html"
+  status = 200
