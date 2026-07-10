@@ -41,6 +41,18 @@ export interface School {
   is_active: boolean
   institution_type: 'university' | 'polytechnic' | 'college_of_education' | 'monotechnic' | null
   created_at: string
+  // profile (phase 11)
+  logo_url: string | null
+  motto: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  phone: string | null
+  email: string | null
+  website: string | null
+  head_name: string | null
+  registration_no: string | null
+  established_year: number | null
 }
 
 export interface SchoolGroup {

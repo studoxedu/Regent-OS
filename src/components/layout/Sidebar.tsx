@@ -173,8 +173,12 @@ function k12Modules(officeName?: string): NavSection[] {
   const all: NavSection[] = [
     { key:'overview',  heading:'Overview',   defaultTo:'/k12',
       items:[{ label:'Dashboard', to:'/k12' },{ label:'Audit Log', to:'/k12/audit' }] },
-    { key:'setup',     heading:'Setup',      defaultTo:'/k12/calendar',
-      items:[{ label:'Academic Calendar', to:'/k12/calendar' },{ label:'Classes & Subjects', to:'/k12/classes' }] },
+    { key:'setup',     heading:'Setup',      defaultTo:'/k12/school',
+      items:[
+        { label:'School Profile',   to:'/k12/school'   },
+        { label:'Academic Calendar', to:'/k12/calendar' },
+        { label:'Classes & Subjects', to:'/k12/classes' },
+      ]},
     { key:'admissions', heading:'Admissions & Records', defaultTo:'/k12/enrollment',
       items:[
         { label:'Enrollment',  to:'/k12/enrollment'   },
@@ -207,7 +211,7 @@ function k12Modules(officeName?: string): NavSection[] {
 }
 
 function getK12ActiveKey(pathname: string): string {
-  if (['/k12/calendar','/k12/classes'].some(p => pathname.startsWith(p))) return 'setup'
+  if (['/k12/school','/k12/calendar','/k12/classes'].some(p => pathname.startsWith(p))) return 'setup'
   if (['/k12/enrollment','/k12/guardians','/k12/transfers','/k12/promotion'].some(p => pathname.startsWith(p))) return 'admissions'
   if (['/k12/attendance','/k12/results','/k12/report-cards','/k12/timetable','/k12/cbt'].some(p => pathname.startsWith(p))) return 'academics'
   if (pathname.startsWith('/k12/fee-management') || pathname.startsWith('/k12/fees')) return 'finance'

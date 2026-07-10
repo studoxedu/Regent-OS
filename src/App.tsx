@@ -22,6 +22,7 @@ import K12Timetable   from './pages/k12/Timetable'
 import FeeManagement  from './pages/k12/FeeManagement'
 import ReportCards    from './pages/k12/ReportCards'
 import Guardians      from './pages/k12/Guardians'
+import SchoolProfile  from './pages/k12/SchoolProfile'
 
 // Tertiary pages
 import TertiaryDashboard       from './pages/tertiary/Dashboard'
@@ -173,6 +174,7 @@ function ProtectedApp() {
         <Route path="/k12/announcements"   element={<Announcements    appUser={appUser} />} />
         <Route path="/k12/messages"        element={<Messages         appUser={appUser} />} />
         <Route path="/k12/cbt"             element={<CBT              appUser={appUser} />} />
+        <Route path="/k12/school"          element={<SchoolProfile    appUser={appUser} />} />
 
         {/* ── Tertiary ── */}
         <Route path="/tertiary"               element={<TertiaryDashboard       appUser={appUser} />} />
