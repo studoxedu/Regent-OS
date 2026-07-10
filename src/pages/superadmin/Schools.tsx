@@ -73,7 +73,7 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
 
   // Seed First Admin modal
   const [seedingSchool, setSeedingSchool] = useState<SchoolRow | null>(null)
-  const [seedForm, setSeedForm] = useState({ firstName: '', lastName: '', email: '', role: '' })
+  const [seedForm, setSeedForm] = useState({ firstName: '', lastName: '', email: '', role: '', password: '' })
   const [seeding,  setSeeding]  = useState(false)
   const [seedError, setSeedError] = useState('')
   const [credential, setCredential] = useState<SeedCredential | null>(null)
@@ -129,7 +129,7 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
 
   function openSeed(school: SchoolRow) {
     const roles = isK12School(school) ? K12_ADMIN_ROLES : TERTIARY_ADMIN_ROLES
-    setSeedForm({ firstName: '', lastName: '', email: '', role: Object.keys(roles)[0] })
+    setSeedForm({ firstName: '', lastName: '', email: '', role: Object.keys(roles)[0], password: '' })
     setSeedError('')
     setSeedingSchool(school)
   }
@@ -139,6 +139,9 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
     if (!seedForm.firstName.trim() || !seedForm.lastName.trim() || !seedForm.email.trim()) {
       setSeedError('First name, last name and email are required.'); return
     }
+    if (seedForm.password && seedForm.password.length < 6) {
+      setSeedError('Password must be at least 6 characters (or leave blank to auto-generate).'); return
+    }
     setSeeding(true); setSeedError('')
     const { data, error } = await supabase.rpc('create_staff_member', {
       p_email:       seedForm.email.trim().toLowerCase(),
@@ -146,6 +149,7 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
       p_last_name:   seedForm.lastName.trim(),
       p_office_name: seedForm.role,
       p_school_id:   seedingSchool.id,
+      p_password:    seedForm.password.trim() || null,
     })
     setSeeding(false)
     if (error) { setSeedError(error.message); return }
@@ -399,8 +403,17 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Password <span className="text-gray-400 normal-case font-normal">(optional — blank auto-generates)</span>
+                </label>
+                <input type="text" value={seedForm.password}
+                  onChange={e => setSeedForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder="Set a password, or leave blank"
+                  className="w-full border border-gray-200 rounded px-3 py-2 text-[13px] focus:outline-none focus:ring-1 focus:ring-navy-300" />
+              </div>
               <div className="text-[11px] text-gray-400 bg-gray-50 rounded p-3 leading-relaxed">
-                If this is a new user, a temporary password will be generated. If the email already exists in the system, this role will be added to their account.
+                A new account is created with the password you set (or a generated one if left blank). If the email already exists, this role is added to their account and the password is unchanged.
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-5">

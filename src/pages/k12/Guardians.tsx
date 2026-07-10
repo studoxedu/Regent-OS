@@ -24,7 +24,7 @@ export default function Guardians({ appUser }: Props) {
 
   // Add guardian form
   const [showForm, setShowForm]   = useState(false)
-  const [form, setForm]           = useState({ first_name: '', last_name: '', email: '', phone: '' })
+  const [form, setForm]           = useState({ first_name: '', last_name: '', email: '', phone: '', nin: '' })
   const [saving, setSaving]       = useState(false)
 
   // Link guardian to learner
@@ -76,10 +76,11 @@ export default function Guardians({ appUser }: Props) {
       last_name:  form.last_name.trim(),
       email:      form.email.trim() || null,
       phone:      form.phone.trim() || null,
+      nin:        form.nin.trim() || null,
     })
     setSaving(false)
     if (error) { flash(error.message, 'error'); return }
-    setForm({ first_name: '', last_name: '', email: '', phone: '' })
+    setForm({ first_name: '', last_name: '', email: '', phone: '', nin: '' })
     setShowForm(false)
     flash('Guardian added.')
     loadData()
@@ -144,6 +145,10 @@ export default function Guardians({ appUser }: Props) {
               </Field>
               <Field label="Phone Number">
                 <Input placeholder="e.g. 08012345678" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+              </Field>
+              <Field label="NIN" hint="11-digit National Identification Number (optional)">
+                <Input inputMode="numeric" maxLength={11} placeholder="11 digits" value={form.nin}
+                  onChange={e => setForm(f => ({ ...f, nin: e.target.value.replace(/\D/g, '') }))} />
               </Field>
             </Grid2>
             <div className="text-xs text-gray-400 mt-2 mb-4">

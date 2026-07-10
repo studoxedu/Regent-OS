@@ -26,10 +26,16 @@ export default function K12Enrollment({ appUser }: Props) {
   // Inline class assignment
   const [assigningId, setAssigningId] = useState<string | null>(null)
 
+  // Inline NIN editing (backfill for existing learners)
+  const [ninEditId, setNinEditId] = useState<string | null>(null)
+  const [ninDraft, setNinDraft]   = useState('')
+  const [ninSaving, setNinSaving] = useState(false)
+
   const [form, setForm] = useState({
     first_name: '', last_name: '', date_of_birth: '',
     stage: '' as Stage | '',
     class_id: '',
+    nin: '',
     guardian_consent_captured: false,
   })
 
@@ -74,8 +80,21 @@ export default function K12Enrollment({ appUser }: Props) {
           .eq('id', result.result.enrollment_id as string)
       }
 
+      // Store the learner's NIN via the governed RPC (learner.enroll returns
+      // the STX code, so resolve the learner's DB id from it)
+      if (form.nin.trim() && result?.result?.learner_id) {
+        const { data: lrn } = await supabase
+          .from('learners').select('id').eq('learner_id', result.result.learner_id as string).single()
+        if (lrn?.id) {
+          const { error: ninErr } = await supabase.rpc('set_learner_nin', {
+            p_learner_id: lrn.id, p_school_id: schoolId, p_nin: form.nin.trim(),
+          })
+          if (ninErr) showToast(`Enrolled, but NIN not saved: ${ninErr.message}`)
+        }
+      }
+
       setEnrollOpen(false)
-      setForm({ first_name: '', last_name: '', date_of_birth: '', stage: '', class_id: '', guardian_consent_captured: false })
+      setForm({ first_name: '', last_name: '', date_of_birth: '', stage: '', class_id: '', nin: '', guardian_consent_captured: false })
       loadData()
       showToast('Learner enrolled successfully.')
       notify(appUser.profile.id, schoolId, 'Learner enrolled', {
@@ -88,6 +107,18 @@ export default function K12Enrollment({ appUser }: Props) {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function saveNin(learnerId: string) {
+    setNinSaving(true)
+    const { error } = await supabase.rpc('set_learner_nin', {
+      p_learner_id: learnerId, p_school_id: schoolId, p_nin: ninDraft.trim(),
+    })
+    setNinSaving(false)
+    if (error) { showToast(`Error: ${error.message}`); return }
+    setNinEditId(null); setNinDraft('')
+    loadData()
+    showToast('NIN updated.')
   }
 
   async function assignClass(enrollmentId: string, classId: string) {
@@ -127,7 +158,7 @@ export default function K12Enrollment({ appUser }: Props) {
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                {['Learner', 'Learner ID', 'Stage', 'Class', 'Entry Date', 'Status', 'Consent'].map(h => (
+                {['Learner', 'Learner ID', 'NIN', 'Stage', 'Class', 'Entry Date', 'Status', 'Consent'].map(h => (
                   <th key={h} className="px-5 py-2.5 text-left bg-gray-50 border-b border-gray-200 text-[10px] font-bold tracking-[0.08em] uppercase text-gray-500">
                     {h}
                   </th>
@@ -136,13 +167,35 @@ export default function K12Enrollment({ appUser }: Props) {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="px-5 py-8 text-sm text-gray-400 text-center">Loading…</td></tr>
+                <tr><td colSpan={8} className="px-5 py-8 text-sm text-gray-400 text-center">Loading…</td></tr>
               ) : enrollments.map(en => (
                 <tr key={en.id} className="border-b border-gray-50 hover:bg-gray-50/60">
                   <td className="px-5 py-3 text-sm font-semibold text-navy-900">
                     {en.learner?.first_name} {en.learner?.last_name}
                   </td>
                   <td className="px-5 py-3 font-mono text-xs text-gray-400">{en.learner?.learner_id}</td>
+                  <td className="px-5 py-3 text-xs">
+                    {ninEditId === en.learner?.id ? (
+                      <span className="flex items-center gap-1">
+                        <input value={ninDraft} inputMode="numeric" maxLength={11} autoFocus
+                          onChange={e => setNinDraft(e.target.value.replace(/\D/g, ''))}
+                          onKeyDown={e => { if (e.key === 'Enter' && en.learner?.id) saveNin(en.learner.id) }}
+                          className="w-28 border border-gray-200 rounded-sm px-2 py-1 font-mono text-xs focus:outline-none focus:border-navy-400" />
+                        <button disabled={ninSaving} onClick={() => en.learner?.id && saveNin(en.learner.id)}
+                          className="text-navy-700 hover:text-navy-900 font-semibold">✓</button>
+                        <button onClick={() => { setNinEditId(null); setNinDraft('') }}
+                          className="text-gray-400 hover:text-gray-600">✕</button>
+                      </span>
+                    ) : en.learner?.nin ? (
+                      <button onClick={() => { setNinEditId(en.learner!.id); setNinDraft(en.learner!.nin ?? '') }}
+                        className="font-mono text-gray-600 hover:text-navy-900" title="Edit NIN">
+                        {en.learner.nin}
+                      </button>
+                    ) : (
+                      <button onClick={() => { setNinEditId(en.learner!.id); setNinDraft('') }}
+                        className="text-amber-600 hover:text-amber-700 font-semibold">+ Add NIN</button>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-sm text-gray-600">{STAGE_LABELS[en.stage] ?? en.stage}</td>
                   <td className="px-5 py-3">
                     {assigningId === en.id ? (
@@ -170,7 +223,7 @@ export default function K12Enrollment({ appUser }: Props) {
                 </tr>
               ))}
               {!loading && enrollments.length === 0 && (
-                <tr><td colSpan={7} className="px-5 py-10 text-sm text-gray-400 text-center">No learners enrolled yet.</td></tr>
+                <tr><td colSpan={8} className="px-5 py-10 text-sm text-gray-400 text-center">No learners enrolled yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -203,9 +256,16 @@ export default function K12Enrollment({ appUser }: Props) {
             <Input value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} placeholder="e.g. Okafor" />
           </Field>
         </Grid2>
-        <Field label="Date of Birth">
-          <Input type="date" value={form.date_of_birth} onChange={e => setForm(f => ({ ...f, date_of_birth: e.target.value }))} />
-        </Field>
+        <Grid2>
+          <Field label="Date of Birth">
+            <Input type="date" value={form.date_of_birth} onChange={e => setForm(f => ({ ...f, date_of_birth: e.target.value }))} />
+          </Field>
+          <Field label="NIN" hint="Learner's 11-digit NIN, or a guardian's NIN if the learner has none">
+            <Input value={form.nin} inputMode="numeric" maxLength={11}
+              onChange={e => setForm(f => ({ ...f, nin: e.target.value.replace(/\D/g, '') }))}
+              placeholder="11 digits" />
+          </Field>
+        </Grid2>
         <Field label="Stage" required>
           <Select
             value={form.stage}

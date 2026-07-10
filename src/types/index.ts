@@ -83,6 +83,7 @@ export interface Learner {
   first_name: string
   last_name: string
   date_of_birth: string | null
+  nin: string | null  // National Identification Number (11 digits)
   created_at: string
 }
 
@@ -364,6 +365,7 @@ export interface Guardian {
   last_name: string
   email: string | null
   phone: string | null
+  nin: string | null  // National Identification Number (11 digits)
   created_at: string
 }
 
