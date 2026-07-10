@@ -35,9 +35,12 @@ export default function K12Enrollment({ appUser }: Props) {
     first_name: '', last_name: '', date_of_birth: '',
     stage: '' as Stage | '',
     class_id: '',
-    nin: '',
+    nin: '', guardian_nin: '',
     guardian_consent_captured: false,
   })
+
+  // Enrollment needs the learner's NIN, or a guardian's NIN as fallback
+  const ninProvided = form.nin.length === 11 || form.guardian_nin.length === 11
 
   function loadData() {
     Promise.all([
@@ -62,6 +65,10 @@ export default function K12Enrollment({ appUser }: Props) {
 
   async function handleEnroll() {
     if (!form.first_name || !form.last_name || !form.stage) return
+    if (!ninProvided) {
+      showToast('Provide the learner’s NIN, or a guardian’s NIN if the learner has none.')
+      return
+    }
     setSaving(true)
     try {
       const result = await flowExecute('learner.enroll', schoolId, {
@@ -80,21 +87,22 @@ export default function K12Enrollment({ appUser }: Props) {
           .eq('id', result.result.enrollment_id as string)
       }
 
-      // Store the learner's NIN via the governed RPC (learner.enroll returns
-      // the STX code, so resolve the learner's DB id from it)
-      if (form.nin.trim() && result?.result?.learner_id) {
+      // Store the NIN via the governed RPC (learner.enroll returns the STX
+      // code, so resolve the learner's DB id from it)
+      if (result?.result?.learner_id) {
         const { data: lrn } = await supabase
           .from('learners').select('id').eq('learner_id', result.result.learner_id as string).single()
         if (lrn?.id) {
           const { error: ninErr } = await supabase.rpc('set_learner_nin', {
-            p_learner_id: lrn.id, p_school_id: schoolId, p_nin: form.nin.trim(),
+            p_learner_id: lrn.id, p_school_id: schoolId,
+            p_nin: form.nin.trim() || null, p_guardian_nin: form.guardian_nin.trim() || null,
           })
           if (ninErr) showToast(`Enrolled, but NIN not saved: ${ninErr.message}`)
         }
       }
 
       setEnrollOpen(false)
-      setForm({ first_name: '', last_name: '', date_of_birth: '', stage: '', class_id: '', nin: '', guardian_consent_captured: false })
+      setForm({ first_name: '', last_name: '', date_of_birth: '', stage: '', class_id: '', nin: '', guardian_nin: '', guardian_consent_captured: false })
       loadData()
       showToast('Learner enrolled successfully.')
       notify(appUser.profile.id, schoolId, 'Learner enrolled', {
@@ -188,8 +196,13 @@ export default function K12Enrollment({ appUser }: Props) {
                       </span>
                     ) : en.learner?.nin ? (
                       <button onClick={() => { setNinEditId(en.learner!.id); setNinDraft(en.learner!.nin ?? '') }}
-                        className="font-mono text-gray-600 hover:text-navy-900" title="Edit NIN">
+                        className="font-mono text-gray-600 hover:text-navy-900" title="Edit learner NIN">
                         {en.learner.nin}
+                      </button>
+                    ) : en.learner?.guardian_nin ? (
+                      <button onClick={() => { setNinEditId(en.learner!.id); setNinDraft('') }}
+                        className="font-mono text-gray-500 hover:text-navy-900" title="Guardian NIN — click to add learner's own">
+                        <span className="text-[9px] font-sans text-gray-400 mr-1">G</span>{en.learner.guardian_nin}
                       </button>
                     ) : (
                       <button onClick={() => { setNinEditId(en.learner!.id); setNinDraft('') }}
@@ -241,7 +254,7 @@ export default function K12Enrollment({ appUser }: Props) {
             <Button
               variant="primary"
               onClick={handleEnroll}
-              disabled={saving || !form.first_name || !form.last_name || !form.stage}
+              disabled={saving || !form.first_name || !form.last_name || !form.stage || !ninProvided}
             >
               {saving ? 'Enrolling…' : '+ Enroll Learner'}
             </Button>
@@ -256,16 +269,26 @@ export default function K12Enrollment({ appUser }: Props) {
             <Input value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} placeholder="e.g. Okafor" />
           </Field>
         </Grid2>
+        <Field label="Date of Birth">
+          <Input type="date" value={form.date_of_birth} onChange={e => setForm(f => ({ ...f, date_of_birth: e.target.value }))} />
+        </Field>
         <Grid2>
-          <Field label="Date of Birth">
-            <Input type="date" value={form.date_of_birth} onChange={e => setForm(f => ({ ...f, date_of_birth: e.target.value }))} />
-          </Field>
-          <Field label="NIN" hint="Learner's 11-digit NIN, or a guardian's NIN if the learner has none">
+          <Field label="Learner NIN" hint="11 digits — leave blank if the learner has none">
             <Input value={form.nin} inputMode="numeric" maxLength={11}
               onChange={e => setForm(f => ({ ...f, nin: e.target.value.replace(/\D/g, '') }))}
               placeholder="11 digits" />
           </Field>
+          <Field label="Guardian NIN" hint="Required if the learner has no NIN">
+            <Input value={form.guardian_nin} inputMode="numeric" maxLength={11}
+              onChange={e => setForm(f => ({ ...f, guardian_nin: e.target.value.replace(/\D/g, '') }))}
+              placeholder="11 digits" />
+          </Field>
         </Grid2>
+        {!ninProvided && (
+          <p className="text-[11px] text-amber-600 -mt-2 mb-2">
+            Enter the learner's NIN, or a guardian's NIN if the learner has none.
+          </p>
+        )}
         <Field label="Stage" required>
           <Select
             value={form.stage}

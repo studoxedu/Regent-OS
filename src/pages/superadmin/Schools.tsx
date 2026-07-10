@@ -139,8 +139,8 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
     if (!seedForm.firstName.trim() || !seedForm.lastName.trim() || !seedForm.email.trim()) {
       setSeedError('First name, last name and email are required.'); return
     }
-    if (seedForm.password && seedForm.password.length < 6) {
-      setSeedError('Password must be at least 6 characters (or leave blank to auto-generate).'); return
+    if (seedForm.password.trim().length < 6) {
+      setSeedError('Set a password of at least 6 characters for this staff member.'); return
     }
     setSeeding(true); setSeedError('')
     const { data, error } = await supabase.rpc('create_staff_member', {
@@ -149,13 +149,13 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
       p_last_name:   seedForm.lastName.trim(),
       p_office_name: seedForm.role,
       p_school_id:   seedingSchool.id,
-      p_password:    seedForm.password.trim() || null,
+      p_password:    seedForm.password.trim(),
     })
     setSeeding(false)
     if (error) { setSeedError(error.message); return }
     setCredential({ email: data.email, is_new_user: data.is_new_user, temp_password: data.temp_password })
     setSeedingSchool(null)
-    flash(`First admin seeded for ${seedingSchool.name}.`)
+    flash(`Staff member added to ${seedingSchool.name}.`)
   }
 
   function typeLabel(s: SchoolRow): string {
@@ -280,7 +280,7 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
                       onClick={() => openSeed(s)}
                       className="text-[11px] font-semibold text-navy-600 hover:text-navy-900 hover:underline cursor-pointer whitespace-nowrap"
                     >
-                      Seed Admin
+                      + Add Staff
                     </button>
                   </td>
                 </tr>
@@ -358,7 +358,7 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
       {seedingSchool && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-[16px] font-bold text-navy-900 mb-1">Seed First Admin</h2>
+            <h2 className="text-[16px] font-bold text-navy-900 mb-1">Add Staff Member</h2>
             <p className="text-[12px] text-gray-500 mb-4">{seedingSchool.name}</p>
             {seedError && (
               <div className="mb-3 px-3 py-2 rounded text-[12px] bg-red-50 border border-red-200 text-red-600">
@@ -405,15 +405,15 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                  Password <span className="text-gray-400 normal-case font-normal">(optional — blank auto-generates)</span>
+                  Password <span className="text-red-400">*</span>
                 </label>
                 <input type="text" value={seedForm.password}
                   onChange={e => setSeedForm(f => ({ ...f, password: e.target.value }))}
-                  placeholder="Set a password, or leave blank"
+                  placeholder="Set a password (min 6 characters)"
                   className="w-full border border-gray-200 rounded px-3 py-2 text-[13px] focus:outline-none focus:ring-1 focus:ring-navy-300" />
               </div>
               <div className="text-[11px] text-gray-400 bg-gray-50 rounded p-3 leading-relaxed">
-                A new account is created with the password you set (or a generated one if left blank). If the email already exists, this role is added to their account and the password is unchanged.
+                The new account is created with the password you set here — share it with the staff member. If the email already exists, this role is added to their account and the password is unchanged.
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-5">
@@ -421,9 +421,9 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
                 className="px-3 py-1.5 text-[13px] text-gray-600 border border-gray-200 rounded cursor-pointer hover:bg-gray-50">
                 Cancel
               </button>
-              <button onClick={handleSeedAdmin} disabled={seeding || !seedForm.firstName.trim() || !seedForm.lastName.trim() || !seedForm.email.trim()}
+              <button onClick={handleSeedAdmin} disabled={seeding || !seedForm.firstName.trim() || !seedForm.lastName.trim() || !seedForm.email.trim() || seedForm.password.trim().length < 6}
                 className="px-4 py-1.5 bg-navy-900 text-white text-[13px] font-semibold rounded cursor-pointer hover:bg-navy-800 disabled:opacity-50">
-                {seeding ? 'Seeding…' : 'Seed Admin'}
+                {seeding ? 'Adding…' : 'Add Staff'}
               </button>
             </div>
           </div>

@@ -83,7 +83,8 @@ export interface Learner {
   first_name: string
   last_name: string
   date_of_birth: string | null
-  nin: string | null  // National Identification Number (11 digits)
+  nin: string | null           // learner's own NIN (11 digits)
+  guardian_nin: string | null  // guardian's NIN, used when the learner has none
   created_at: string
 }
 

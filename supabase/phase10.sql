@@ -4,9 +4,16 @@
 -- ═══════════════════════════════════════════════════════════
 
 -- ── 1. NIN columns (Nigerian NIN = exactly 11 digits) ────────
+-- learners.nin        = the learner's own NIN (may be null for young children)
+-- learners.guardian_nin = a guardian's NIN, used when the learner has none
+-- guardians.nin       = NIN on a full guardian record (Guardians page)
 ALTER TABLE learners  ADD COLUMN IF NOT EXISTS nin TEXT;
 ALTER TABLE learners  DROP CONSTRAINT IF EXISTS learners_nin_chk;
 ALTER TABLE learners  ADD  CONSTRAINT learners_nin_chk  CHECK (nin IS NULL OR nin ~ '^[0-9]{11}$');
+
+ALTER TABLE learners  ADD COLUMN IF NOT EXISTS guardian_nin TEXT;
+ALTER TABLE learners  DROP CONSTRAINT IF EXISTS learners_guardian_nin_chk;
+ALTER TABLE learners  ADD  CONSTRAINT learners_guardian_nin_chk CHECK (guardian_nin IS NULL OR guardian_nin ~ '^[0-9]{11}$');
 
 ALTER TABLE guardians ADD COLUMN IF NOT EXISTS nin TEXT;
 ALTER TABLE guardians DROP CONSTRAINT IF EXISTS guardians_nin_chk;
@@ -14,7 +21,13 @@ ALTER TABLE guardians ADD  CONSTRAINT guardians_nin_chk CHECK (nin IS NULL OR ni
 
 -- ── 2. Governed NIN update (learners have no school_id; gate via
 --        the learner's enrollment + the learner.enroll capability) ──
-CREATE OR REPLACE FUNCTION set_learner_nin(p_learner_id UUID, p_school_id UUID, p_nin TEXT)
+DROP FUNCTION IF EXISTS set_learner_nin(UUID, UUID, TEXT);
+CREATE OR REPLACE FUNCTION set_learner_nin(
+  p_learner_id   UUID,
+  p_school_id    UUID,
+  p_nin          TEXT,
+  p_guardian_nin TEXT DEFAULT NULL
+)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public AS $$
 BEGIN
@@ -23,7 +36,10 @@ BEGIN
   END IF;
 
   IF p_nin IS NOT NULL AND p_nin <> '' AND p_nin !~ '^[0-9]{11}$' THEN
-    RAISE EXCEPTION 'NIN must be exactly 11 digits';
+    RAISE EXCEPTION 'Learner NIN must be exactly 11 digits';
+  END IF;
+  IF p_guardian_nin IS NOT NULL AND p_guardian_nin <> '' AND p_guardian_nin !~ '^[0-9]{11}$' THEN
+    RAISE EXCEPTION 'Guardian NIN must be exactly 11 digits';
   END IF;
 
   IF NOT EXISTS (
@@ -33,10 +49,16 @@ BEGIN
     RAISE EXCEPTION 'Learner is not enrolled at this school';
   END IF;
 
-  UPDATE learners SET nin = NULLIF(p_nin, '') WHERE id = p_learner_id;
-  RETURN jsonb_build_object('ok', true, 'learner_id', p_learner_id, 'nin', NULLIF(p_nin, ''));
+  -- NULL arg = leave that column unchanged; '' = clear; digits = set.
+  UPDATE learners
+  SET nin          = CASE WHEN p_nin          IS NOT NULL THEN NULLIF(p_nin, '')          ELSE nin          END,
+      guardian_nin = CASE WHEN p_guardian_nin IS NOT NULL THEN NULLIF(p_guardian_nin, '') ELSE guardian_nin END
+  WHERE id = p_learner_id;
+
+  RETURN jsonb_build_object('ok', true, 'learner_id', p_learner_id,
+                            'nin', NULLIF(p_nin, ''), 'guardian_nin', NULLIF(p_guardian_nin, ''));
 END $$;
-GRANT EXECUTE ON FUNCTION set_learner_nin(UUID, UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION set_learner_nin(UUID, UUID, TEXT, TEXT) TO authenticated;
 
 -- ── 3. create_staff_member: optional admin-set password ──────
 -- Drop the 5-arg version first so the new 6-arg default isn't an
