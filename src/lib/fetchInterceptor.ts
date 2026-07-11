@@ -31,7 +31,16 @@ function isFunctionsUrl(url: string): boolean {
   return url.includes('/functions/v1/')
 }
 
-const WRITE_RPCS = ['flow_execute', 'create_staff_member']
+const WRITE_RPCS = ['flow_execute']
+
+// RPCs that must never be offline-queued/faked: they return credentials
+// or IDs the caller must actually see, and navigator.onLine can report
+// false negatives. These always hit the network and fail loudly offline.
+const PASSTHROUGH_RPCS = ['create_staff_member', 'set_learner_nin']
+
+function isPassthroughRpc(url: string): boolean {
+  return isRpcUrl(url) && PASSTHROUGH_RPCS.some(rpc => url.includes(`/rpc/${rpc}`))
+}
 
 function isMutation(method: string, url: string): boolean {
   if (method === 'PATCH' || method === 'DELETE') return true
@@ -61,9 +70,12 @@ export function installFetchInterceptor() {
     const isSupabase = url.includes('.supabase.co')
     if (!isSupabase) return originalFetch(input, init)
 
-    // Auth, storage and edge functions (e.g. payments) always go through
-    // directly — a queued/faked payment call must never report success.
-    if (isAuthUrl(url) || isStorageUrl(url) || isFunctionsUrl(url)) return originalFetch(input, init)
+    // Auth, storage, edge functions (payments) and credential-returning
+    // RPCs always go through directly — a queued/faked call here must
+    // never report a phantom success.
+    if (isAuthUrl(url) || isStorageUrl(url) || isFunctionsUrl(url) || isPassthroughRpc(url)) {
+      return originalFetch(input, init)
+    }
 
     const method = (init?.method ?? 'GET').toUpperCase()
     const headersObj = Object.fromEntries(
