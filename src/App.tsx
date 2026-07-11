@@ -1,87 +1,88 @@
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useAuth } from './hooks/useAuth'
 import Login from './pages/auth/Login'
 import { AppLayout } from './components/layout/AppLayout'
 import { supabase } from './lib/supabase'
 import { OFFICE_DEFAULT_ROUTE } from './components/layout/Sidebar'
 import { isK12Office } from './lib/roles'
+import { SyncBanner } from './components/ui/SyncBanner'
+
+// ── Route pages are lazy-loaded so each becomes its own chunk;
+//    the initial bundle only carries the shell + the active route. ──
 
 // K12 pages
-import K12Dashboard   from './pages/k12/Dashboard'
-import K12Enrollment  from './pages/k12/Enrollment'
-import K12Results     from './pages/k12/Results'
-import K12AuditLog    from './pages/k12/AuditLog'
-import K12Fees        from './pages/k12/Fees'
-import K12Promotion   from './pages/k12/Promotion'
-import K12Transfers   from './pages/k12/Transfers'
-import K12Calendar    from './pages/k12/Calendar'
-import K12Classes     from './pages/k12/Classes'
-import K12Attendance  from './pages/k12/Attendance'
-import K12Timetable   from './pages/k12/Timetable'
-import FeeManagement  from './pages/k12/FeeManagement'
-import ReportCards    from './pages/k12/ReportCards'
-import Guardians      from './pages/k12/Guardians'
-import SchoolProfile  from './pages/k12/SchoolProfile'
+const K12Dashboard   = lazy(() => import('./pages/k12/Dashboard'))
+const K12Enrollment  = lazy(() => import('./pages/k12/Enrollment'))
+const K12Results     = lazy(() => import('./pages/k12/Results'))
+const K12AuditLog    = lazy(() => import('./pages/k12/AuditLog'))
+const K12Fees        = lazy(() => import('./pages/k12/Fees'))
+const K12Promotion   = lazy(() => import('./pages/k12/Promotion'))
+const K12Transfers   = lazy(() => import('./pages/k12/Transfers'))
+const K12Calendar    = lazy(() => import('./pages/k12/Calendar'))
+const K12Classes     = lazy(() => import('./pages/k12/Classes'))
+const K12Attendance  = lazy(() => import('./pages/k12/Attendance'))
+const K12Timetable   = lazy(() => import('./pages/k12/Timetable'))
+const FeeManagement  = lazy(() => import('./pages/k12/FeeManagement'))
+const ReportCards    = lazy(() => import('./pages/k12/ReportCards'))
+const Guardians      = lazy(() => import('./pages/k12/Guardians'))
+const SchoolProfile  = lazy(() => import('./pages/k12/SchoolProfile'))
 
 // Tertiary pages
-import TertiaryDashboard       from './pages/tertiary/Dashboard'
-import TertiaryStudents        from './pages/tertiary/Students'
-import TertiaryStaff           from './pages/tertiary/Staff'
-import TertiaryStructure       from './pages/tertiary/Structure'
-import TertiarySessions        from './pages/tertiary/Sessions'
-import TertiaryResultsPipeline from './pages/tertiary/ResultsPipeline'
-import TertiaryTranscripts     from './pages/tertiary/Transcripts'
-import TertiaryGradeScales     from './pages/tertiary/GradeScales'
-import TertiaryFees             from './pages/tertiary/Fees'
-import TertiarySetup            from './pages/tertiary/Setup'
-import TertiaryCoredesk         from './pages/tertiary/Coredesk'
-import TertiaryAcadex           from './pages/tertiary/Acadex'
-import TertiarySchedox          from './pages/tertiary/Schedox'
-import TertiaryPaydesk          from './pages/tertiary/Paydesk'
-import TertiarySenate           from './pages/tertiary/Senate'
-import TertiaryBoards           from './pages/tertiary/Boards'
-import LecturerCourseScores     from './pages/tertiary/LecturerCourseScores'
-import TertiaryScoreReview      from './pages/tertiary/ScoreReview'
-
-import CourseRegistration       from './pages/tertiary/CourseRegistration'
+const TertiaryDashboard       = lazy(() => import('./pages/tertiary/Dashboard'))
+const TertiaryStudents        = lazy(() => import('./pages/tertiary/Students'))
+const TertiaryStaff           = lazy(() => import('./pages/tertiary/Staff'))
+const TertiaryStructure       = lazy(() => import('./pages/tertiary/Structure'))
+const TertiarySessions        = lazy(() => import('./pages/tertiary/Sessions'))
+const TertiaryResultsPipeline = lazy(() => import('./pages/tertiary/ResultsPipeline'))
+const TertiaryTranscripts     = lazy(() => import('./pages/tertiary/Transcripts'))
+const TertiaryGradeScales     = lazy(() => import('./pages/tertiary/GradeScales'))
+const TertiaryFees            = lazy(() => import('./pages/tertiary/Fees'))
+const TertiarySetup           = lazy(() => import('./pages/tertiary/Setup'))
+const TertiaryCoredesk        = lazy(() => import('./pages/tertiary/Coredesk'))
+const TertiaryAcadex          = lazy(() => import('./pages/tertiary/Acadex'))
+const TertiarySchedox         = lazy(() => import('./pages/tertiary/Schedox'))
+const TertiaryPaydesk         = lazy(() => import('./pages/tertiary/Paydesk'))
+const TertiarySenate          = lazy(() => import('./pages/tertiary/Senate'))
+const TertiaryBoards          = lazy(() => import('./pages/tertiary/Boards'))
+const LecturerCourseScores    = lazy(() => import('./pages/tertiary/LecturerCourseScores'))
+const TertiaryScoreReview     = lazy(() => import('./pages/tertiary/ScoreReview'))
+const CourseRegistration      = lazy(() => import('./pages/tertiary/CourseRegistration'))
 
 // Proprietor pages
-import ProprietorDashboard    from './pages/proprietor/Dashboard'
-import ProprietorAudit        from './pages/proprietor/Audit'
-import ProprietorSchoolDetail from './pages/proprietor/SchoolDetail'
+const ProprietorDashboard    = lazy(() => import('./pages/proprietor/Dashboard'))
+const ProprietorAudit        = lazy(() => import('./pages/proprietor/Audit'))
+const ProprietorSchoolDetail = lazy(() => import('./pages/proprietor/SchoolDetail'))
 
 // Super admin pages
-import SuperAdminDashboard from './pages/superadmin/Dashboard'
-import SuperAdminSchools   from './pages/superadmin/Schools'
-import SuperAdminGroups    from './pages/superadmin/Groups'
+const SuperAdminDashboard = lazy(() => import('./pages/superadmin/Dashboard'))
+const SuperAdminSchools   = lazy(() => import('./pages/superadmin/Schools'))
+const SuperAdminGroups    = lazy(() => import('./pages/superadmin/Groups'))
 
 // Student portal
-import StudentHome          from './pages/student/Home'
-import StudentDashboard     from './pages/student/Dashboard'
-import StudentCourses       from './pages/student/Courses'
-import StudentMaterials     from './pages/student/Materials'
-import StudentTimetable     from './pages/student/Timetable'
-import StudentResults       from './pages/student/Results'
-import StudentFees          from './pages/student/Fees'
-import StudentTransactions  from './pages/student/Transactions'
-import StudentAccommodation from './pages/student/Accommodation'
-import StudentProfile       from './pages/student/Profile'
+const StudentHome          = lazy(() => import('./pages/student/Home'))
+const StudentDashboard     = lazy(() => import('./pages/student/Dashboard'))
+const StudentCourses       = lazy(() => import('./pages/student/Courses'))
+const StudentMaterials     = lazy(() => import('./pages/student/Materials'))
+const StudentTimetable     = lazy(() => import('./pages/student/Timetable'))
+const StudentResults       = lazy(() => import('./pages/student/Results'))
+const StudentFees          = lazy(() => import('./pages/student/Fees'))
+const StudentTransactions  = lazy(() => import('./pages/student/Transactions'))
+const StudentAccommodation = lazy(() => import('./pages/student/Accommodation'))
+const StudentProfile       = lazy(() => import('./pages/student/Profile'))
+const StudentTests         = lazy(() => import('./pages/student/Tests'))
 
 // Shared operations
-import StaffManagement from './pages/shared/StaffManagement'
-import Payroll         from './pages/shared/Payroll'
-import Library         from './pages/shared/Library'
-import Announcements   from './pages/shared/Announcements'
-import Messages        from './pages/shared/Messages'
-import CBT             from './pages/shared/CBT'
-import StudentTests    from './pages/student/Tests'
+const StaffManagement = lazy(() => import('./pages/shared/StaffManagement'))
+const Payroll         = lazy(() => import('./pages/shared/Payroll'))
+const Library         = lazy(() => import('./pages/shared/Library'))
+const Announcements   = lazy(() => import('./pages/shared/Announcements'))
+const Messages        = lazy(() => import('./pages/shared/Messages'))
+const CBT             = lazy(() => import('./pages/shared/CBT'))
 
 // Parent portal
-import ParentLogin     from './pages/portal/ParentLogin'
-import ParentDashboard from './pages/portal/ParentDashboard'
-
-import { SyncBanner } from './components/ui/SyncBanner'
+const ParentLogin     = lazy(() => import('./pages/portal/ParentLogin'))
+const ParentDashboard = lazy(() => import('./pages/portal/ParentDashboard'))
 
 // ── Parent portal entry point ────────────────────────────────
 function ParentPortal() {
@@ -99,11 +100,16 @@ function ParentPortal() {
     return () => subscription.unsubscribe()
   }, [])
 
-  if (checking) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-sm text-gray-400">Loading…</div></div>
+  const loader = <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-sm text-gray-400">Loading…</div></div>
+  if (checking) return loader
 
-  if (!email) return <ParentLogin onSignIn={setEmail} />
-
-  return <ParentDashboard guardianEmail={email} onSignOut={async () => { await supabase.auth.signOut(); setEmail(null) }} />
+  return (
+    <Suspense fallback={loader}>
+      {!email
+        ? <ParentLogin onSignIn={setEmail} />
+        : <ParentDashboard guardianEmail={email} onSignOut={async () => { await supabase.auth.signOut(); setEmail(null) }} />}
+    </Suspense>
+  )
 }
 
 // ── Main app ─────────────────────────────────────────────────

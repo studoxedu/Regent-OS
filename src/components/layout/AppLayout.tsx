@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { supabase } from '../../lib/supabase'
@@ -143,7 +143,13 @@ export function AppLayout({ appUser, onSignOut, onSwitchMembership }: AppLayoutP
         <NotificationBell profileId={appUser.profile.id} />
       </Sidebar>
       <main className="flex-1 flex flex-col overflow-auto bg-surface">
-        <Outlet />
+        <Suspense fallback={
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-navy-400 text-xs tracking-widest uppercase">Loading…</div>
+          </div>
+        }>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )
