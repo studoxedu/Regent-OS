@@ -83,7 +83,14 @@ export function installFetchInterceptor() {
     )
     const cacheKey = buildCacheKey(url, headersObj)
 
-    if (!navigator.onLine) {
+    // Optimistic online: always try the real request first. navigator.onLine
+    // gives false negatives (especially under the PWA service worker), and
+    // trusting it silently faked mutations as {}. We only fall back to offline
+    // behavior when a request ACTUALLY fails with a network error.
+    let response: Response
+    try {
+      response = await originalFetch(input, init)
+    } catch {
       if (isMutation(method, url)) {
         await queueMutation({
           url,
@@ -92,31 +99,23 @@ export function installFetchInterceptor() {
           headers: JSON.stringify(headersObj),
           timestamp: Date.now(),
         })
-        // Return a quiet success so the UI doesn't crash
+        // Genuinely offline — return a quiet success so the UI doesn't crash;
+        // the queued write replays when the connection returns.
         const empty = method === 'DELETE' ? [] : {}
         return new Response(JSON.stringify(empty), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
-      } else {
-        // Read — serve from cache
-        const cached = await getCachedResponse(cacheKey)
-        if (cached !== null) {
-          return new Response(JSON.stringify(cached), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          })
-        }
-        return new Response(JSON.stringify([]), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
       }
+      // Read — serve from cache if we have it
+      const cached = await getCachedResponse(cacheKey)
+      return new Response(JSON.stringify(cached ?? []), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
-    // Online — execute normally then cache reads
-    const response = await originalFetch(input, init)
-
+    // Cache successful reads for offline use
     if (response.ok && (method === 'GET' || isRpcUrl(url))) {
       try {
         const data = await response.clone().json()
