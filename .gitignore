@@ -32,3 +32,6 @@ release/
 # Tauri
 src-tauri/target/
 src-tauri/gen/
+
+# QA scratch scripts (not part of the app)
+.qa-scratch/

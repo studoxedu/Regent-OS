@@ -36,9 +36,9 @@ interface ImportGroup {
 }
 
 const RESULTS_TEMPLATE = 'learner_id,session,term,subject,ca,exam\n' +
-  'STX-2024-00001,2023/2024,1,Mathematics,32,55\n' +
-  'STX-2024-00001,2023/2024,1,English,28,50\n' +
-  'STX-2024-00001,2023/2024,2,Mathematics,30,52'
+  'RGT-2024-00001,2023/2024,1,Mathematics,32,55\n' +
+  'RGT-2024-00001,2023/2024,1,English,28,50\n' +
+  'RGT-2024-00001,2023/2024,2,Mathematics,30,52'
 
 function parseCSV(text: string): string[][] {
   return text.trim().split('\n').map(line => {

@@ -160,7 +160,7 @@ export default function Login({ onSignIn }: LoginProps) {
                   type="text"
                   value={regNumber}
                   onChange={e => setRegNumber(e.target.value)}
-                  placeholder="e.g. STX/2026/CSC/001"
+                  placeholder="e.g. RGT/2025/001"
                   autoComplete="username"
                   className="w-full bg-white border border-gray-300 rounded px-3.5 py-2.5 text-[14px] text-[#0d1117] placeholder-gray-400 focus:outline-none focus:border-[#0d1117] transition-colors"
                 />

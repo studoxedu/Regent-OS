@@ -5,16 +5,17 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn(
-    'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. ' +
-    'Copy .env.example to .env.local and fill in your project credentials.'
+  // Fail loudly — never silently fall back to a placeholder URL, which
+  // produces confusing auth/network errors later instead of a clear cause.
+  throw new Error(
+    '[Regent OS] Missing Supabase environment variables. ' +
+    'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY — locally in .env.local, ' +
+    'or in your hosting provider (e.g. Vercel) project settings — then rebuild. ' +
+    'The app cannot start without them.'
   )
 }
 
-export const supabase = createClient(
-  SUPABASE_URL || 'https://placeholder.supabase.co',
-  SUPABASE_ANON_KEY || 'placeholder-key'
-)
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 /** The only write path for governance data. */
 export async function flowExecute(
