@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Topbar } from '../../components/layout/Topbar'
 import { Card, CardHeader, Alert } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { Input, Select, Field } from '../../components/ui/Form'
+import { Modal } from '../../components/ui/Modal'
+import { Input, Select, Field, Grid2 } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/utils'
+import { K12_OFFICES, K12_OFFICE_LABELS, canAssignRoles, canManageSalary } from '../../lib/roles'
 import type { AppUser, Membership } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -28,6 +30,16 @@ const EMPLOYMENT_TYPES = [
 
 export default function StaffManagement({ appUser }: Props) {
   const schoolId = appUser.activeSchool?.id ?? ''
+  const office   = appUser.activeMembership?.office?.name ?? ''
+  const mayAssign = canAssignRoles(office)   // head teacher / ICT admin
+  const maySalary = canManageSalary(office)  // head teacher / bursar
+
+  // Assign-role / add-staff modal
+  const [assignOpen, setAssignOpen]   = useState(false)
+  const [aForm, setAForm]             = useState({ firstName: '', lastName: '', email: '', role: K12_OFFICES[0] as string, password: '' })
+  const [assigning, setAssigning]     = useState(false)
+  const [aErr, setAErr]               = useState('')
+  const [cred, setCred]               = useState<{ email: string; is_new: boolean; temp: string | null } | null>(null)
 
   const [staff, setStaff]         = useState<Membership[]>([])
   const [profiles, setProfiles]   = useState<Record<string, StaffProfile>>({})
@@ -93,7 +105,9 @@ export default function StaffManagement({ appUser }: Props) {
       designation:     (draft.designation as string)?.trim() || null,
       qualification:   (draft.qualification as string)?.trim() || null,
       employment_type: draft.employment_type ?? 'full_time',
-      salary_grade_id: draft.salary_grade_id || null,
+      // Only finance roles may set a salary grade; others preserve the
+      // existing value so a staff-records editor can't assign pay scales.
+      salary_grade_id: maySalary ? (draft.salary_grade_id || null) : (existing?.salary_grade_id ?? null),
       start_date:      draft.start_date || null,
     }
     if (existing?.id) {
@@ -104,6 +118,29 @@ export default function StaffManagement({ appUser }: Props) {
     setSaving(false)
     setEditId(null)
     flash('Profile saved.')
+    loadAll()
+  }
+
+  async function handleAssign() {
+    if (!aForm.firstName.trim() || !aForm.lastName.trim() || !aForm.email.trim()) {
+      setAErr('First name, last name and email are required.'); return
+    }
+    if (aForm.password.trim().length < 6) { setAErr('Set a password of at least 6 characters.'); return }
+    setAssigning(true); setAErr('')
+    const { data, error } = await supabase.rpc('create_staff_member', {
+      p_email:       aForm.email.trim().toLowerCase(),
+      p_first_name:  aForm.firstName.trim(),
+      p_last_name:   aForm.lastName.trim(),
+      p_office_name: aForm.role,
+      p_school_id:   schoolId,
+      p_password:    aForm.password.trim(),
+    })
+    setAssigning(false)
+    if (error) { setAErr(error.message); return }
+    setCred({ email: data.email, is_new: data.is_new_user, temp: data.temp_password })
+    setAssignOpen(false)
+    setAForm({ firstName: '', lastName: '', email: '', role: K12_OFFICES[0], password: '' })
+    flash('Role assigned.')
     loadAll()
   }
 
@@ -130,16 +167,52 @@ export default function StaffManagement({ appUser }: Props) {
 
   return (
     <>
-      <Topbar title="Staff Management" meta={appUser.activeSchool?.name}
+      <Topbar title="Staff & Roles" meta={appUser.activeSchool?.name}
         actions={
-          <Button variant="ghost" size="sm" onClick={() => setShowGradeForm(v => !v)}>
-            {showGradeForm ? 'Close' : '+ Salary Grade'}
-          </Button>
+          <div className="flex items-center gap-2">
+            {maySalary && (
+              <Button variant="ghost" size="sm" onClick={() => setShowGradeForm(v => !v)}>
+                {showGradeForm ? 'Close' : '+ Salary Grade'}
+              </Button>
+            )}
+            {mayAssign && (
+              <Button variant="primary" size="sm" onClick={() => { setAErr(''); setAssignOpen(true) }}>
+                + Assign Role
+              </Button>
+            )}
+          </div>
         }
       />
 
       <div className="p-8 space-y-6">
         {toast && <Alert type={toast.type === 'error' ? 'danger' : 'success'}>{toast.msg}</Alert>}
+
+        {/* Credential banner — shown once after assigning a role/creating an account */}
+        {cred && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-5">
+            <div className="flex justify-between items-start">
+              <div className="space-y-2">
+                <div className="text-sm font-bold text-green-800">
+                  {cred.is_new ? 'Account created & role assigned' : 'Role added to existing user'}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="label text-green-600 mb-1">Email</div>
+                    <div className="font-mono text-green-800 text-sm">{cred.email}</div>
+                  </div>
+                  {cred.temp && (
+                    <div>
+                      <div className="label text-green-600 mb-1">Password</div>
+                      <div className="font-mono font-bold text-green-900 text-sm">{cred.temp}</div>
+                    </div>
+                  )}
+                </div>
+                {cred.temp && <div className="text-xs text-green-600">Share these credentials with the staff member.</div>}
+              </div>
+              <button onClick={() => setCred(null)} className="text-green-400 hover:text-green-700 text-lg ml-4">×</button>
+            </div>
+          </div>
+        )}
 
         {/* Salary grade quick-add */}
         {showGradeForm && (
@@ -189,7 +262,7 @@ export default function StaffManagement({ appUser }: Props) {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {['Name', 'Role', 'Designation', 'Qualification', 'Type', 'Salary Grade', ''].map(h => (
+                  {['Name', 'Role', 'Designation', 'Qualification', 'Type', ...(maySalary ? ['Salary Grade'] : []), ''].map(h => (
                     <th key={h} className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[10px] font-bold tracking-[0.08em] uppercase text-gray-500 text-left">{h}</th>
                   ))}
                 </tr>
@@ -235,18 +308,20 @@ export default function StaffManagement({ appUser }: Props) {
                           <span className="text-xs capitalize text-gray-600">{(prof?.employment_type ?? 'full_time').replace('_', ' ')}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        {isEditing ? (
-                          <Select
-                            value={draft.salary_grade_id ?? ''}
-                            onChange={e => setDraft(d => ({ ...d, salary_grade_id: e.target.value }))}
-                            placeholder="— none —"
-                            options={grades.map(g => ({ value: g.id, label: `${g.name} (₦${Number(g.basic_pay).toLocaleString('en-NG')})` }))}
-                          />
-                        ) : (
-                          <span className="text-xs text-navy-700">{gradeLabel(prof?.salary_grade_id ?? null)}</span>
-                        )}
-                      </td>
+                      {maySalary && (
+                        <td className="px-4 py-3">
+                          {isEditing ? (
+                            <Select
+                              value={draft.salary_grade_id ?? ''}
+                              onChange={e => setDraft(d => ({ ...d, salary_grade_id: e.target.value }))}
+                              placeholder="— none —"
+                              options={grades.map(g => ({ value: g.id, label: `${g.name} (₦${Number(g.basic_pay).toLocaleString('en-NG')})` }))}
+                            />
+                          ) : (
+                            <span className="text-xs text-navy-700">{gradeLabel(prof?.salary_grade_id ?? null)}</span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right">
                         {isEditing ? (
                           <div className="flex gap-1 justify-end">
@@ -268,10 +343,52 @@ export default function StaffManagement({ appUser }: Props) {
         </Card>
 
         <p className="text-xs text-gray-400">
-          Staff accounts are created by the platform administrator. This page manages
-          HR details (designation, salary grade, employment type) for existing staff.
+          {mayAssign
+            ? 'Use “Assign Role” to create a staff account and give it a role (e.g. Exam Officer, Bursar). This page also manages HR details for existing staff.'
+            : 'This page manages HR details (designation, employment type) for existing staff.'}
         </p>
       </div>
+
+      {/* Assign Role / Add Staff modal */}
+      <Modal
+        open={assignOpen}
+        title="Assign Role"
+        onClose={() => setAssignOpen(false)}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setAssignOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={handleAssign}
+              disabled={assigning || !aForm.firstName.trim() || !aForm.lastName.trim() || !aForm.email.trim() || aForm.password.trim().length < 6}>
+              {assigning ? 'Assigning…' : 'Assign Role'}
+            </Button>
+          </>
+        }
+      >
+        {aErr && <Alert type="danger" className="mb-4">{aErr}</Alert>}
+        <Grid2>
+          <Field label="First Name" required>
+            <Input value={aForm.firstName} onChange={e => setAForm(f => ({ ...f, firstName: e.target.value }))} autoFocus />
+          </Field>
+          <Field label="Last Name" required>
+            <Input value={aForm.lastName} onChange={e => setAForm(f => ({ ...f, lastName: e.target.value }))} />
+          </Field>
+        </Grid2>
+        <Field label="Email Address" required>
+          <Input type="email" placeholder="staff@school.edu.ng" value={aForm.email}
+            onChange={e => setAForm(f => ({ ...f, email: e.target.value }))} />
+        </Field>
+        <Field label="Role" required>
+          <Select value={aForm.role} onChange={e => setAForm(f => ({ ...f, role: e.target.value }))}
+            options={K12_OFFICES.map(o => ({ value: o, label: K12_OFFICE_LABELS[o] }))} />
+        </Field>
+        <Field label="Password" required hint="Min 6 characters — share it with the staff member.">
+          <Input type="text" value={aForm.password}
+            onChange={e => setAForm(f => ({ ...f, password: e.target.value }))} placeholder="Set a password" />
+        </Field>
+        <p className="text-[11px] text-gray-400 bg-gray-50 rounded-md p-3 leading-relaxed">
+          If the email already exists, the selected role is added to that account (password unchanged).
+        </p>
+      </Modal>
     </>
   )
 }

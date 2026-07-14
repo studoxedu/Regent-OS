@@ -123,52 +123,36 @@ The Supabase keys are baked into the build from committed `.env.production`, so
 
 ---
 
-## 5. Build & deploy (current plan)
+## 5. Build & deploy — Vercel
 
-**Hosting decision: Cloudflare Pages — Direct Upload.** Why:
-- Netlify free tier's **bandwidth limit** (100GB/mo) stopped the project.
-- Cloudflare has **unlimited bandwidth**, free, no card.
-- Cloudflare's *git build* kept failing on config (`_redirects` infinite-loop,
-  wrangler). **Direct Upload skips the build entirely** — you upload the finished
-  `dist/` folder — so none of those failures apply. Repo stays private.
+**Hosting: Vercel** (Netlify + Cloudflare removed). SPA routing is handled by
+`vercel.json` (`rewrites` → `/index.html`), so deep links don't 404 on refresh.
 
-### First deploy (pick one)
-- **Dashboard:** Cloudflare → Workers & Pages → **Create → Pages → Upload assets**
-  (NOT "Connect to Git"). Name it `regentos`. Drag the `dist` folder. → `regentos.pages.dev`.
-- **CLI:** `npx wrangler login` then `npm run deploy`.
+### Deploy
+- **Recommended — Git integration:** connect the GitHub repo to a Vercel project
+  once; every push to `main` auto-builds and deploys. Build command `npm run build`,
+  output dir `dist` (Vercel detects Vite automatically).
+- **CLI (manual):** `npx vercel --prod` (or `npm run deploy`, which runs the same).
 
-### Updates (every code change)
-```
-npm run deploy      # = build locally + wrangler pages deploy dist --project-name=regentos
-```
-~30s. Each upload is a versioned deployment with one-click rollback. (Script is in
-`package.json`.)
-
-### Do NOT
-- Do not "Connect to Git" on Cloudflare (that runs the failing build).
-- Do not "Retry" the old failed Cloudflare deploy (rebuilds an old commit).
-
-### SPA routing
-- Cloudflare Workers/Pages Assets handles SPA fallback natively — **no `_redirects`
-  file** for the app (it was removed; it caused the infinite-loop error).
-- `public/.htaccess` exists for Apache/cPanel hosts (harmless elsewhere).
+### Required env vars (set in Vercel → Project → Settings → Environment Variables)
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+(values are in `.env.production`). The app **fails loudly** on boot if either is
+missing — no silent placeholder fallback.
 
 ---
 
-## 6. Domain (rysantech.com.ng) — outstanding
+## 6. Domain — wiring on Vercel
 
-- Registered at **Whogohost**. DNS nameservers currently point at **Netlify** (from
-  the earlier setup) — this must move.
-- **Plan:** move the domain onto **Cloudflare DNS** (free), then attach custom
-  domains to the Pages projects:
-  - `rysantech.com.ng` + `www` → marketing site
-  - `regentos.rysantech.com.ng` → the app
-- Steps: Cloudflare → Add a domain → get 2 nameservers → set them at Whogohost →
-  wait for Active → Pages project → Custom Domains → add.
-- **Old Netlify sites:** still up (throttled). Leave as fallback; delete once
-  Cloudflare + domain fully work. The domain's DNS is the only remaining Netlify tie.
-- Email `hello@rysantech.com.ng` is on the marketing site but **not set up yet**
-  (needs e.g. Zoho Mail free tier + MX records).
+- Domain registered at **Whogohost**.
+- In Vercel → Project → **Settings → Domains → Add**, enter the domain. Vercel shows
+  the DNS records to set:
+  - Apex (`example.com`) → an **A record** to Vercel's IP (Vercel displays it), or
+  - Subdomain (`app.example.com`) → a **CNAME** to `cname.vercel-dns.com`.
+- Set those records at Whogohost's DNS panel, wait for propagation → Vercel
+  auto-issues the SSL cert.
+- Email (e.g. `hello@<domain>`) is separate — needs an MX-record mail provider
+  (e.g. Zoho Mail free tier), independent of Vercel.
 
 ---
 

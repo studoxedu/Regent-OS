@@ -1,8 +1,9 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/utils'
+import { isK12Office, k12RouteAllowed } from '../../lib/roles'
 import type { AppUser } from '../../types'
 
 interface AppLayoutProps {
@@ -137,6 +138,17 @@ function NotificationBell({ profileId }: { profileId: string }) {
 }
 
 export function AppLayout({ appUser, onSignOut, onSwitchMembership }: AppLayoutProps) {
+  const location = useLocation()
+  const office   = appUser.activeMembership?.office?.name ?? ''
+
+  // Route guard: a K-12 office that opens a /k12 route outside its allowlist
+  // (by typing the URL or a stale link) is bounced to its dashboard. The
+  // sidebar already hides these; this closes the URL-typing gap.
+  const blocked =
+    isK12Office(office) &&
+    location.pathname.startsWith('/k12') &&
+    !k12RouteAllowed(office, location.pathname)
+
   return (
     <div className="flex fixed inset-0">
       <Sidebar appUser={appUser} onSignOut={onSignOut} onSwitchMembership={onSwitchMembership}>
@@ -148,7 +160,7 @@ export function AppLayout({ appUser, onSignOut, onSwitchMembership }: AppLayoutP
             <div className="text-navy-400 text-xs tracking-widest uppercase">Loading…</div>
           </div>
         }>
-          <Outlet />
+          {blocked ? <Navigate to="/k12" replace /> : <Outlet />}
         </Suspense>
       </main>
     </div>

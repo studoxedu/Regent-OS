@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import { getInstitutionLabels } from '../../lib/institution'
-import { isK12Office, K12_OFFICE_SECTIONS } from '../../lib/roles'
+import { isK12Office, k12RouteAllowed } from '../../lib/roles'
 import type { AppUser, LecturerOffering } from '../../types'
 import type { ReactNode } from 'react'
 
@@ -168,7 +168,7 @@ function tertiaryModules(institutionType?: string | null, officeName?: string): 
   return allowed ? all.filter(s => allowed.includes(s.key)) : all
 }
 
-// ── K12 — sections filtered by office (see K12_OFFICE_SECTIONS) ───────────────
+// ── K12 — sections + items filtered by the office route allowlist ────────────
 function k12Modules(officeName?: string): NavSection[] {
   const all: NavSection[] = [
     { key:'overview',  heading:'Overview',   defaultTo:'/k12',
@@ -206,8 +206,15 @@ function k12Modules(officeName?: string): NavSection[] {
       ]},
   ]
 
-  const allowed = K12_OFFICE_SECTIONS[officeName ?? '']   // null / undefined = show all
-  return allowed ? all.filter(s => allowed.includes(s.key)) : all
+  // Filter each section's items to the routes this office may open, drop empty
+  // sections, and re-point each section heading at its first visible item so a
+  // heading link never lands on a forbidden route.
+  return all
+    .map(s => {
+      const items = s.items.filter(i => k12RouteAllowed(officeName ?? '', i.to))
+      return { ...s, items, defaultTo: items[0]?.to ?? s.defaultTo }
+    })
+    .filter(s => s.items.length > 0)
 }
 
 function getK12ActiveKey(pathname: string): string {
