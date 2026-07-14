@@ -336,7 +336,7 @@ export function Sidebar({ appUser, onSignOut, onSwitchMembership: _onSwitch, chi
   const roleLabel = officeName.replace(/_/g, ' ')
 
   return (
-    <aside className="w-[220px] bg-navy-900 flex flex-col flex-shrink-0 h-full">
+    <aside className="w-[220px] bg-navy-950 flex flex-col flex-shrink-0 h-full">
 
       {/* Brand */}
       <div className="px-4 py-[18px] border-b border-navy-800">

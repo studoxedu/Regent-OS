@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,52 +10,54 @@
     margin: 0;
   }
   body {
-    font-family: 'Public Sans', system-ui, sans-serif;
-    background-color: #f4f5f7;
-    color: #131b2e;
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
     -webkit-font-smoothing: antialiased;
-    font-size: 13px;
+    font-size: 14px;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
   input, select, textarea, button {
-    font-family: 'Public Sans', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 }
 
 @layer components {
   .label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.09em;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #9ca3af;
+    color: #64748b;
   }
   .label-dark {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #3d5a80;
+    color: #475569;
   }
   .input-field {
     width: 100%;
     padding: 8px 12px;
-    border: 1.5px solid #d1d5db;
-    border-radius: 2px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
     font-size: 14px;
-    color: #131b2e;
+    color: #0f172a;
     background: #fff;
     outline: none;
+    box-shadow: 0 1px 2px rgba(2, 6, 23, 0.03);
     transition: border-color 0.15s, box-shadow 0.15s;
   }
   .input-field:focus {
-    border-color: #131b2e;
-    box-shadow: 0 0 0 3px rgba(19, 27, 46, 0.08);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
   }
   .input-field.error {
     border-color: #dc2626;
     background: #fff5f5;
   }
   .input-field::placeholder {
-    color: #9ca3af;
+    color: #94a3b8;
   }
 }

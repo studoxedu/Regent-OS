@@ -97,7 +97,7 @@ export function Checkbox({ label, checked, onChange, className }: CheckboxProps)
         type="checkbox"
         checked={checked}
         onChange={e => onChange?.(e.target.checked)}
-        className="mt-0.5 w-4 h-4 rounded-sm accent-navy-900 flex-shrink-0"
+        className="mt-0.5 w-4 h-4 rounded-sm accent-blue-600 flex-shrink-0"
       />
       <span className="text-sm text-gray-700">{label}</span>
     </label>

@@ -23,11 +23,11 @@ export function Modal({ open, title, onClose, children, footer, width = 'max-w-m
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/50 backdrop-blur-[2px]"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className={cn(
-        'bg-white rounded-sm shadow-modal w-full mx-4',
+        'bg-white rounded-lg shadow-modal w-full mx-4 overflow-hidden',
         width
       )}>
         {/* Header */}

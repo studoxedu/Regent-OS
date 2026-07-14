@@ -13,8 +13,8 @@ interface BadgeProps {
 export function Badge({ label, bg = 'bg-gray-100', text = 'text-gray-600', dot, className }: BadgeProps) {
   return (
     <span className={cn(
-      'inline-flex items-center gap-1 px-2 py-0.5 rounded-sm',
-      'text-[10px] font-bold tracking-[0.07em] uppercase',
+      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full',
+      'text-[10px] font-bold tracking-[0.05em] uppercase',
       bg, text, className
     )}>
       {dot && <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', dot)} />}
@@ -47,6 +47,6 @@ export function StageBadge({ stage }: { stage: string }) {
 
 export function TierBadge({ tier }: { tier: 'pilot' | 'standard' }) {
   return tier === 'standard'
-    ? <Badge label="Standard — Paid" bg="bg-amber-500" text="text-navy-900" />
+    ? <Badge label="Standard — Paid" bg="bg-amber-500" text="text-white" />
     : <Badge label="Pilot — Free" bg="bg-gray-100" text="text-gray-500" />
 }

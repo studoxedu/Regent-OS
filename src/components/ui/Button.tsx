@@ -10,11 +10,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClass: Record<Variant, string> = {
-  primary:   'bg-navy-900 text-white hover:bg-navy-800 border border-transparent',
-  secondary: 'bg-white text-navy-900 border border-navy-900 hover:bg-navy-100',
-  ghost:     'bg-transparent text-navy-900 border border-gray-300 hover:bg-gray-50',
-  danger:    'bg-red-600 text-white border border-transparent hover:bg-red-700',
-  amber:     'bg-amber-500 text-navy-900 border border-transparent hover:bg-amber-200',
+  primary:   'bg-blue-600 text-white hover:bg-blue-700 border border-transparent shadow-sm',
+  secondary: 'bg-white text-navy-800 border border-navy-200 hover:bg-navy-100 shadow-sm',
+  ghost:     'bg-transparent text-navy-800 border border-gray-200 hover:bg-gray-50',
+  danger:    'bg-red-600 text-white border border-transparent hover:bg-red-700 shadow-sm',
+  amber:     'bg-amber-500 text-white border border-transparent hover:bg-amber-800 shadow-sm',
 }
 
 const sizeClass: Record<Size, string> = {
@@ -36,9 +36,10 @@ export function Button({
       {...props}
       disabled={disabled}
       className={cn(
-        'inline-flex items-center gap-1.5 font-semibold tracking-[0.04em] rounded-sm',
+        'inline-flex items-center gap-1.5 font-semibold rounded-md',
         'transition-colors duration-150 cursor-pointer',
-        'disabled:opacity-40 disabled:cursor-not-allowed',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40',
+        'disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none',
         variantClass[variant],
         sizeClass[size],
         className

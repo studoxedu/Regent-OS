@@ -47,11 +47,11 @@ export default function Login({ onSignIn }: LoginProps) {
     <div className="min-h-screen flex">
 
       {/* ── Left: Brand panel ── */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#0d1117] flex-col justify-between px-14 py-12">
+      <div className="hidden lg:flex lg:w-1/2 bg-navy-950 flex-col justify-between px-14 py-12">
         {/* Logo */}
         <div>
           <div className="text-[22px] font-black text-white tracking-tight leading-none">Regent OS</div>
-          <div className="text-[10px] text-[#4a5568] uppercase tracking-[0.18em] mt-1">
+          <div className="text-[10px] text-navy-600 uppercase tracking-[0.18em] mt-1">
             Institutional Infrastructure
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function Login({ onSignIn }: LoginProps) {
             Audit.<br />
             <span>Integrity</span><span className="text-amber-500">.</span>
           </div>
-          <p className="text-[15px] text-[#6b7280] leading-relaxed max-w-sm">
+          <p className="text-[15px] text-navy-400 leading-relaxed max-w-sm">
             The governance infrastructure universities depend on to
             function — not just software they use.
           </p>
@@ -72,7 +72,7 @@ export default function Login({ onSignIn }: LoginProps) {
         {/* Feature tags */}
         <div className="flex gap-10">
           {['Office-Based\nAuthority', 'Immutable Audit\nTrail', 'State Machine\nWorkflows'].map(t => (
-            <div key={t} className="text-[10px] text-[#374151] uppercase tracking-[0.15em] font-semibold leading-relaxed whitespace-pre-line">
+            <div key={t} className="text-[10px] text-navy-600 uppercase tracking-[0.15em] font-semibold leading-relaxed whitespace-pre-line">
               {t}
             </div>
           ))}
@@ -80,12 +80,12 @@ export default function Login({ onSignIn }: LoginProps) {
       </div>
 
       {/* ── Right: Form panel ── */}
-      <div className="w-full lg:w-1/2 bg-[#f7f7f7] flex items-center justify-center px-8 py-12">
+      <div className="w-full lg:w-1/2 bg-surface flex items-center justify-center px-8 py-12">
         <div className="w-full max-w-[400px]">
 
           {/* Heading */}
           <div className="mb-8">
-            <h1 className="text-[32px] font-bold text-[#0d1117] leading-tight mb-1">Sign in</h1>
+            <h1 className="text-[32px] font-bold text-navy-900 leading-tight mb-1">Sign in</h1>
             <p className="text-[14px] text-gray-500">
               Enter your{' '}
               <span className="text-blue-600">
@@ -101,7 +101,7 @@ export default function Login({ onSignIn }: LoginProps) {
               <button key={m} onClick={() => switchMode(m)}
                 className={`px-4 py-1.5 text-[12px] font-semibold rounded-md capitalize transition-all cursor-pointer ${
                   mode === m
-                    ? 'bg-white text-[#0d1117] shadow-sm'
+                    ? 'bg-white text-navy-900 shadow-sm'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}>
                 {m}
@@ -120,7 +120,7 @@ export default function Login({ onSignIn }: LoginProps) {
           {mode === 'staff' ? (
             <form onSubmit={handleStaff} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold text-[#374151] uppercase tracking-[0.1em] mb-1.5">
+                <label className="block text-[11px] font-semibold text-navy-600 uppercase tracking-[0.06em] mb-1.5">
                   Email Address
                 </label>
                 <input
@@ -129,11 +129,11 @@ export default function Login({ onSignIn }: LoginProps) {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@institution.edu.ng"
                   autoComplete="email"
-                  className="w-full bg-white border border-gray-300 rounded px-3.5 py-2.5 text-[14px] text-[#0d1117] placeholder-gray-400 focus:outline-none focus:border-[#0d1117] transition-colors"
+                  className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-navy-900 placeholder-gray-400 shadow-sm focus:outline-none focus:border-blue-600 focus:ring-[3px] focus:ring-blue-500/15 transition-all"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-[#374151] uppercase tracking-[0.1em] mb-1.5">
+                <label className="block text-[11px] font-semibold text-navy-600 uppercase tracking-[0.06em] mb-1.5">
                   Password
                 </label>
                 <input
@@ -142,18 +142,18 @@ export default function Login({ onSignIn }: LoginProps) {
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  className="w-full bg-white border border-gray-300 rounded px-3.5 py-2.5 text-[14px] text-[#0d1117] placeholder-gray-400 focus:outline-none focus:border-[#0d1117] transition-colors"
+                  className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-navy-900 placeholder-gray-400 shadow-sm focus:outline-none focus:border-blue-600 focus:ring-[3px] focus:ring-blue-500/15 transition-all"
                 />
               </div>
               <button type="submit" disabled={loading}
-                className="w-full mt-2 py-3 bg-[#0d1117] text-white text-[12px] font-bold uppercase tracking-[0.12em] rounded hover:bg-[#1a2332] transition-colors disabled:opacity-50 cursor-pointer">
+                className="w-full mt-2 py-3 bg-blue-600 text-white text-[13px] font-semibold rounded-md shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer">
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
             </form>
           ) : (
             <form onSubmit={handleStudent} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold text-[#374151] uppercase tracking-[0.1em] mb-1.5">
+                <label className="block text-[11px] font-semibold text-navy-600 uppercase tracking-[0.06em] mb-1.5">
                   Registration Number
                 </label>
                 <input
@@ -162,11 +162,11 @@ export default function Login({ onSignIn }: LoginProps) {
                   onChange={e => setRegNumber(e.target.value)}
                   placeholder="e.g. RGT/2025/001"
                   autoComplete="username"
-                  className="w-full bg-white border border-gray-300 rounded px-3.5 py-2.5 text-[14px] text-[#0d1117] placeholder-gray-400 focus:outline-none focus:border-[#0d1117] transition-colors"
+                  className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-navy-900 placeholder-gray-400 shadow-sm focus:outline-none focus:border-blue-600 focus:ring-[3px] focus:ring-blue-500/15 transition-all"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-[#374151] uppercase tracking-[0.1em] mb-1.5">
+                <label className="block text-[11px] font-semibold text-navy-600 uppercase tracking-[0.06em] mb-1.5">
                   Password
                 </label>
                 <input
@@ -175,11 +175,11 @@ export default function Login({ onSignIn }: LoginProps) {
                   onChange={e => setStuPass(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  className="w-full bg-white border border-gray-300 rounded px-3.5 py-2.5 text-[14px] text-[#0d1117] placeholder-gray-400 focus:outline-none focus:border-[#0d1117] transition-colors"
+                  className="w-full bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[14px] text-navy-900 placeholder-gray-400 shadow-sm focus:outline-none focus:border-blue-600 focus:ring-[3px] focus:ring-blue-500/15 transition-all"
                 />
               </div>
               <button type="submit" disabled={loading}
-                className="w-full mt-2 py-3 bg-[#0d1117] text-white text-[12px] font-bold uppercase tracking-[0.12em] rounded hover:bg-[#1a2332] transition-colors disabled:opacity-50 cursor-pointer">
+                className="w-full mt-2 py-3 bg-blue-600 text-white text-[13px] font-semibold rounded-md shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer">
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
               <p className="text-[12px] text-gray-400 text-center">

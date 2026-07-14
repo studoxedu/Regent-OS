@@ -35,3 +35,6 @@ src-tauri/gen/
 
 # QA scratch scripts (not part of the app)
 .qa-scratch/
+
+# Demo/seed data — kept out of the repo (regenerated locally as needed)
+supabase/demo_seed*.sql

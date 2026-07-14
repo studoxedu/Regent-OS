@@ -8,7 +8,7 @@ interface CardProps {
 
 export function Card({ className, children }: CardProps) {
   return (
-    <div className={cn('bg-white border border-gray-200 rounded-sm', className)}>
+    <div className={cn('bg-white border border-gray-200 rounded-lg shadow-card overflow-hidden', className)}>
       {children}
     </div>
   )
@@ -54,7 +54,7 @@ const accentClass: Record<string, string> = {
 export function StatCard({ label, value, sub, accent = 'amber' }: StatCardProps) {
   return (
     <div className={cn(
-      'bg-white border border-gray-200 rounded-sm p-5',
+      'bg-white border border-gray-200 rounded-lg shadow-card p-5',
       accentClass[accent]
     )}>
       <div className="label mb-2.5">{label}</div>
@@ -84,7 +84,7 @@ const alertIcons: Record<string, string> = {
 export function Alert({ type, children, className }: AlertProps) {
   return (
     <div className={cn(
-      'border rounded-sm px-4 py-3 flex gap-2.5 items-start text-sm',
+      'border rounded-md px-4 py-3 flex gap-2.5 items-start text-sm',
       alertStyles[type], className
     )}>
       <span className="flex-shrink-0 mt-0.5 font-bold">{alertIcons[type]}</span>
