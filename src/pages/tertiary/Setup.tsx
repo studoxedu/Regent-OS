@@ -9,7 +9,7 @@ import type { AppUser } from '../../types'
 interface Props { appUser: AppUser }
 
 const TOKEN_DOCS = [
-  { token: '{CODE}',  desc: 'Institution code, e.g. STX' },
+  { token: '{CODE}',  desc: 'Institution code, e.g. RGT' },
   { token: '{YEAR}',  desc: 'Admission year, e.g. 2026' },
   { token: '{DEPT}',  desc: 'Department code, e.g. CSC' },
   { token: '{SEQ}',   desc: 'Zero-padded sequence, e.g. 001' },
@@ -104,7 +104,7 @@ export default function TertiarySetup({ appUser }: Props) {
   }
 
   const preview = pattern
-    .replace('{CODE}', instCode || 'STX')
+    .replace('{CODE}', instCode || 'RGT')
     .replace('{YEAR}', '2026')
     .replace('{DEPT}', 'CSC')
     .replace('{SEQ}',  '001')
@@ -131,7 +131,7 @@ export default function TertiarySetup({ appUser }: Props) {
             <Input
               value={instCode}
               onChange={e => setInstCode(e.target.value.toUpperCase())}
-              placeholder="e.g. STX"
+              placeholder="e.g. RGT"
               maxLength={6}
             />
             <div className="text-[11px] text-gray-400 mt-1">Short uppercase code. Used in reg numbers.</div>

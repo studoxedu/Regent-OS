@@ -225,7 +225,7 @@ export default function TertiaryTranscripts({ appUser }: Props) {
             <div className="flex gap-2 mt-2">
               <input
                 className="flex-1 border border-gray-200 rounded-sm px-3 py-2 text-sm outline-none focus:border-navy-900"
-                placeholder="Name or STX-YYYY-NNNNN"
+                placeholder="Name or RGT-YYYY-NNNNN"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && search()}
