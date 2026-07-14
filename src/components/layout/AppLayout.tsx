@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/utils'
-import { isK12Office, k12RouteAllowed } from '../../lib/roles'
+import { isK12Office, k12RouteAllowed, k12DefaultRoute } from '../../lib/roles'
 import type { AppUser } from '../../types'
 
 interface AppLayoutProps {
@@ -160,7 +160,7 @@ export function AppLayout({ appUser, onSignOut, onSwitchMembership }: AppLayoutP
             <div className="text-navy-400 text-xs tracking-widest uppercase">Loading…</div>
           </div>
         }>
-          {blocked ? <Navigate to="/k12" replace /> : <Outlet />}
+          {blocked ? <Navigate to={k12DefaultRoute(office)} replace /> : <Outlet />}
         </Suspense>
       </main>
     </div>

@@ -43,10 +43,12 @@ export function isK12Office(name: string): boolean {
 //    attendance, timetable, CBT, staff records, library — but NOT finance
 //    (fees/payroll) and NOT grading (results / report cards).
 //  • Score entry (/k12/results) belongs to Exam Officer + Class Teacher only.
-const RESOURCES = ['/k12/library', '/k12/announcements', '/k12/messages']
 const OVERVIEW  = ['/k12', '/k12/audit']
+const RESOURCES = ['/k12/library', '/k12/announcements', '/k12/messages']
 
 export const K12_OFFICE_ROUTES: Record<string, string[]> = {
+  // Broad roles — Head Teacher (all except score entry) and ICT Admin (all
+  // except finance + grading). These two are the only wide-access offices.
   head_teacher: [
     ...OVERVIEW,
     '/k12/school', '/k12/calendar', '/k12/classes',
@@ -62,25 +64,28 @@ export const K12_OFFICE_ROUTES: Record<string, string[]> = {
     '/k12/attendance', '/k12/timetable', '/k12/cbt', '/k12/staff',
     ...RESOURCES,
   ],
-  class_teacher: [
-    ...OVERVIEW,
-    '/k12/attendance', '/k12/results', '/k12/report-cards', '/k12/timetable', '/k12/cbt',
-    ...RESOURCES,
-  ],
+
+  // Tightly-scoped single-purpose roles: their function + Announcements only.
+  // No Overview/Dashboard, no Library/Messages.
   k12_exam_officer: [
-    ...OVERVIEW,
+    // Academics + Announcements
     '/k12/attendance', '/k12/results', '/k12/report-cards', '/k12/timetable', '/k12/cbt',
-    ...RESOURCES,
+    '/k12/announcements',
   ],
   bursar: [
-    ...OVERVIEW,
-    '/k12/fee-management', '/k12/fees', '/k12/payroll',
-    ...RESOURCES,
+    // Finance + HR + Announcements
+    '/k12/fee-management', '/k12/fees', '/k12/payroll', '/k12/staff',
+    '/k12/announcements',
   ],
   k12_registrar: [
-    ...OVERVIEW,
+    // Admissions & Records + Announcements
     '/k12/enrollment', '/k12/guardians', '/k12/transfers', '/k12/promotion',
-    ...RESOURCES,
+    '/k12/announcements',
+  ],
+  class_teacher: [
+    // Attendance, Results entry, CBT + Announcements
+    '/k12/attendance', '/k12/results', '/k12/cbt',
+    '/k12/announcements',
   ],
 }
 
@@ -91,6 +96,14 @@ export function k12RouteAllowed(officeName: string, pathname: string): boolean {
   const allowed = K12_OFFICE_ROUTES[officeName]
   if (!allowed) return true
   return allowed.includes(pathname)
+}
+
+/** Where a K-12 office should land — its first allowed route. Prevents a
+ *  redirect loop for tightly-scoped roles whose allowlist excludes the
+ *  /k12 dashboard. */
+export function k12DefaultRoute(officeName: string): string {
+  const allowed = K12_OFFICE_ROUTES[officeName]
+  return allowed && allowed.length > 0 ? allowed[0] : '/k12'
 }
 
 /** Offices that may assign users to roles / create staff + parents. Mirrors

@@ -212,7 +212,10 @@ function k12Modules(officeName?: string): NavSection[] {
   return all
     .map(s => {
       const items = s.items.filter(i => k12RouteAllowed(officeName ?? '', i.to))
-      return { ...s, items, defaultTo: items[0]?.to ?? s.defaultTo }
+      // If a section filters down to a single item, show that item's own
+      // label as the heading (e.g. a lone "Announcements", not "Resources").
+      const heading = items.length === 1 ? items[0].label : s.heading
+      return { ...s, items, heading, defaultTo: items[0]?.to ?? s.defaultTo }
     })
     .filter(s => s.items.length > 0)
 }

@@ -5,7 +5,7 @@ import Login from './pages/auth/Login'
 import { AppLayout } from './components/layout/AppLayout'
 import { supabase } from './lib/supabase'
 import { OFFICE_DEFAULT_ROUTE } from './components/layout/Sidebar'
-import { isK12Office } from './lib/roles'
+import { isK12Office, k12DefaultRoute } from './lib/roles'
 import { SyncBanner } from './components/ui/SyncBanner'
 
 // ── Route pages are lazy-loaded so each becomes its own chunk;
@@ -122,7 +122,7 @@ function ProtectedApp() {
     const target = appUser?.memberships.find(m => m.id === membershipId)
     const office = target?.office?.name ?? ''
     const route  = office === 'proprietor' ? '/proprietor'
-      : isK12Office(office) ? '/k12'
+      : isK12Office(office) ? k12DefaultRoute(office)
       : office === 'student' ? '/student'
       : '/tertiary'
     navigate(route, { replace: true })
@@ -151,7 +151,7 @@ function ProtectedApp() {
   const tertiaryHome = isLecturer ? lecturerHome : (OFFICE_DEFAULT_ROUTE[officeName] ?? '/tertiary')
   const defaultRoute = isSuperAdmin ? '/superadmin'
     : isProprietor ? '/proprietor'
-    : isK12        ? '/k12'
+    : isK12        ? k12DefaultRoute(officeName)
     : isStudent    ? '/student'
     : tertiaryHome
 
