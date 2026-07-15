@@ -80,6 +80,7 @@ export default function K12Enrollment({ appUser }: Props) {
   const [bulkRows, setBulkRows]     = useState<BulkRow[]>([])
   const [importing, setImporting]   = useState(false)
   const [importDone, setImportDone] = useState(false)
+  const [importProgress, setImportProgress] = useState({ done: 0, total: 0 })
 
   function parseBulk() {
     if (!csvText.trim()) return
@@ -95,51 +96,74 @@ export default function K12Enrollment({ appUser }: Props) {
     setImportDone(false)
   }
 
-  async function runBulkImport() {
-    if (!bulkRows.length) return
-    setImporting(true)
-    const updated = [...bulkRows]
-    for (let i = 0; i < updated.length; i++) {
-      const row = updated[i]
-      if (!row.first_name || !row.last_name || !K12_STAGES.includes(row.stage as Stage)) {
-        updated[i] = { ...row, status: 'error', message: 'Missing name or invalid stage' }
-        setBulkRows([...updated]); continue
-      }
-      if (row.nin.length !== 11 && row.guardian_nin.length !== 11) {
-        updated[i] = { ...row, status: 'error', message: 'Need learner or guardian NIN (11 digits)' }
-        setBulkRows([...updated]); continue
-      }
-      try {
-        const result = await flowExecute('learner.enroll', schoolId, {
-          first_name: row.first_name, last_name: row.last_name,
-          date_of_birth: row.date_of_birth || null, stage: row.stage,
-          guardian_consent_captured: true,
-        })
-        const code = result?.result?.learner_id as string | undefined
-        if (code) {
-          const { data: lrn } = await supabase.from('learners').select('id').eq('learner_id', code).single()
-          if (lrn?.id) {
-            await supabase.rpc('set_learner_nin', {
-              p_learner_id: lrn.id, p_school_id: schoolId,
-              p_nin: row.nin || null, p_guardian_nin: row.guardian_nin || null,
-            })
-            // Match class by name within the stage
-            const cls = classes.find(c => c.stage === row.stage && c.name.toLowerCase() === row.class_name.toLowerCase())
-            if (cls && result?.result?.enrollment_id) {
-              await supabase.from('learner_enrollments').update({ class_id: cls.id }).eq('id', result.result.enrollment_id as string)
-            }
+  // Import one row. Returns the row with its outcome; never throws so one
+  // bad row can't abort the whole migration.
+  async function importOne(row: BulkRow): Promise<BulkRow> {
+    if (!row.first_name || !row.last_name || !K12_STAGES.includes(row.stage as Stage)) {
+      return { ...row, status: 'error', message: 'Missing name or invalid stage' }
+    }
+    if (row.nin.length !== 11 && row.guardian_nin.length !== 11) {
+      return { ...row, status: 'error', message: 'Need learner or guardian NIN (11 digits)' }
+    }
+    try {
+      const result = await flowExecute('learner.enroll', schoolId, {
+        first_name: row.first_name, last_name: row.last_name,
+        date_of_birth: row.date_of_birth || null, stage: row.stage,
+        guardian_consent_captured: true,
+      })
+      const code = result?.result?.learner_id as string | undefined
+      if (code) {
+        const { data: lrn } = await supabase.from('learners').select('id').eq('learner_id', code).single()
+        if (lrn?.id) {
+          await supabase.rpc('set_learner_nin', {
+            p_learner_id: lrn.id, p_school_id: schoolId,
+            p_nin: row.nin || null, p_guardian_nin: row.guardian_nin || null,
+          })
+          // Match class by name within the stage
+          const cls = classes.find(c => c.stage === row.stage && c.name.toLowerCase() === row.class_name.toLowerCase())
+          if (cls && result?.result?.enrollment_id) {
+            await supabase.from('learner_enrollments').update({ class_id: cls.id }).eq('id', result.result.enrollment_id as string)
           }
         }
-        updated[i] = { ...row, status: 'ok' }
-      } catch (err) {
-        updated[i] = { ...row, status: 'error', message: err instanceof Error ? err.message : 'Failed' }
       }
-      setBulkRows([...updated])
+      return { ...row, status: 'ok', message: undefined }
+    } catch (err) {
+      return { ...row, status: 'error', message: err instanceof Error ? err.message : 'Failed' }
     }
+  }
+
+  // Import the given row indices with a small concurrency pool — a 1,000-row
+  // migration finishes in ~a minute instead of many. Rows are independent, so
+  // a failure never aborts the run; failed rows can be retried on their own
+  // (Retry button) without re-importing the ones that already succeeded.
+  async function importRows(indices: number[]) {
+    if (!indices.length) return
+    setImporting(true)
+    setImportProgress({ done: 0, total: indices.length })
+    const rows = [...bulkRows]
+    indices.forEach(i => { rows[i] = { ...rows[i], status: 'pending', message: undefined } })
+    setBulkRows([...rows])
+
+    const CONCURRENCY = 6
+    let cursor = 0, done = 0
+    async function worker() {
+      while (cursor < indices.length) {
+        const i = indices[cursor++]
+        rows[i] = await importOne(rows[i])
+        done++
+        setImportProgress({ done, total: indices.length })
+        setBulkRows([...rows])
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, indices.length) }, worker))
+
     setImporting(false)
     setImportDone(true)
     loadData()
   }
+
+  function runBulkImport() { return importRows(bulkRows.map((_, i) => i)) }
+  function retryFailed()   { return importRows(bulkRows.flatMap((r, i) => r.status === 'error' ? [i] : [])) }
 
   function downloadTemplate() {
     const blob = new Blob([BULK_TEMPLATE], { type: 'text/csv' })
@@ -433,9 +457,19 @@ export default function K12Enrollment({ appUser }: Props) {
         footer={
           <>
             <Button variant="ghost" onClick={() => setBulkOpen(false)}>Close</Button>
-            {bulkRows.length > 0 && !importDone && (
-              <Button variant="primary" onClick={runBulkImport} disabled={importing}>
-                {importing ? 'Importing…' : `Import ${bulkRows.length} learners`}
+            {importing && (
+              <span className="text-xs text-gray-500 self-center mr-1">
+                Importing… {importProgress.done} / {importProgress.total}
+              </span>
+            )}
+            {bulkRows.length > 0 && !importDone && !importing && (
+              <Button variant="primary" onClick={runBulkImport}>
+                {`Import ${bulkRows.length} learners`}
+              </Button>
+            )}
+            {importDone && !importing && bulkRows.some(r => r.status === 'error') && (
+              <Button variant="primary" onClick={retryFailed}>
+                {`Retry ${bulkRows.filter(r => r.status === 'error').length} failed`}
               </Button>
             )}
           </>
