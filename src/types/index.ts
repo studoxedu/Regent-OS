@@ -91,7 +91,7 @@ export interface Office {
 
 export interface Learner {
   id: string
-  learner_id: string  // STX-YYYY-NNNNN
+  learner_id: string  // RGT-YYYY-NNNNN
   first_name: string
   last_name: string
   date_of_birth: string | null
