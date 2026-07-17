@@ -47,17 +47,20 @@ export default function TertiaryTranscripts({ appUser }: Props) {
     setSearched(true)
     setSelected(null)
     setTranscript([])
+    // Tertiary students live in `students`, not learner_enrollments (that's the
+    // K-12 model and is always empty for a university).
+    const q = query.trim().replace(/[%,()]/g, '')
     const { data } = await supabase
-      .from('learner_enrollments')
-      .select('*, learner:learners(*)')
-      .eq('school_id', schoolId)
-      .or(`learner_id.eq.${query.trim()},learner_id.ilike.%${query.trim()}%`)
+      .from('students')
+      .select('*')
+      .eq('institution_id', schoolId)
+      .or(`reg_number.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
       .limit(10)
-    setResults((data ?? []) as LearnerEnrollment[])
+    setResults((data ?? []) as any[])
   }
 
-  async function viewTranscript(enrollment: LearnerEnrollment) {
-    setSelected(enrollment)
+  async function viewTranscript(student: any) {
+    setSelected(student)
     setLoadingTranscript(true)
     setTranscript([])
 
@@ -72,7 +75,7 @@ export default function TertiaryTranscripts({ appUser }: Props) {
             semester:semesters(label, ordinal, session:academic_sessions(label))
           )
         `)
-        .eq('enrollment_id', enrollment.id)
+        .eq('student_id', student.id)
         .order('created_at'),
     ])
 
@@ -146,7 +149,7 @@ export default function TertiaryTranscripts({ appUser }: Props) {
 
   function printTranscript() {
     if (!selected) return
-    const learner = selected.learner
+    const student = selected as any
     const cgpa = computeCGPA()
 
     const semHtml = transcript.map(block => {
@@ -182,7 +185,7 @@ export default function TertiaryTranscripts({ appUser }: Props) {
     const win = window.open('', '_blank', 'width=800,height=700')
     if (!win) return
     win.document.write(`
-      <html><head><title>Transcript — ${learner?.first_name} ${learner?.last_name}</title>
+      <html><head><title>Transcript — ${student.first_name} ${student.last_name}</title>
       <style>
         body{font-family:serif;padding:32px;font-size:12px}
         table th,table td{padding:5px 8px;border:1px solid #ddd;text-align:left}
@@ -196,9 +199,9 @@ export default function TertiaryTranscripts({ appUser }: Props) {
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:16px;font-size:12px">
-        <div><b>Name:</b> ${learner?.first_name} ${learner?.last_name}</div>
-        <div><b>Learner ID:</b> ${learner?.learner_id}</div>
-        <div><b>Stage:</b> ${selected.stage?.toUpperCase()}</div>
+        <div><b>Name:</b> ${student.first_name} ${student.last_name}</div>
+        <div><b>Reg No.:</b> ${student.reg_number}</div>
+        <div><b>Programme:</b> ${(student.programme ?? '').toUpperCase()}</div>
         <div><b>Printed:</b> ${new Date().toLocaleDateString('en-NG', { day:'2-digit', month:'long', year:'numeric' })}</div>
       </div>
       <hr style="margin:16px 0">
@@ -238,20 +241,20 @@ export default function TertiaryTranscripts({ appUser }: Props) {
             <div className="border-t border-gray-100">
               {results.length === 0 ? (
                 <div className="px-5 py-6 text-sm text-gray-400">No students found.</div>
-              ) : results.map(en => (
-                <div key={en.id} className={cn(
+              ) : results.map((st: any) => (
+                <div key={st.id} className={cn(
                   'px-5 py-3 flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors',
-                  selected?.id === en.id ? 'bg-navy-50' : 'hover:bg-gray-50'
+                  selected?.id === st.id ? 'bg-navy-50' : 'hover:bg-gray-50'
                 )}>
                   <div>
                     <div className="text-sm font-semibold text-navy-900">
-                      {en.learner?.first_name} {en.learner?.last_name}
+                      {st.first_name} {st.last_name}
                     </div>
-                    <div className="text-xs text-gray-400 font-mono mt-0.5">{en.learner?.learner_id}</div>
+                    <div className="text-xs text-gray-400 font-mono mt-0.5">{st.reg_number}</div>
                   </div>
-                  <Button variant={selected?.id === en.id ? 'primary' : 'secondary'} size="sm"
-                    onClick={() => viewTranscript(en)}>
-                    {selected?.id === en.id ? 'Viewing' : 'View Transcript'}
+                  <Button variant={selected?.id === st.id ? 'primary' : 'secondary'} size="sm"
+                    onClick={() => viewTranscript(st)}>
+                    {selected?.id === st.id ? 'Viewing' : 'View Transcript'}
                   </Button>
                 </div>
               ))}
@@ -266,9 +269,11 @@ export default function TertiaryTranscripts({ appUser }: Props) {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-[18px] font-bold text-navy-900">
-                  {selected.learner?.first_name} {selected.learner?.last_name}
+                  {(selected as any).first_name} {(selected as any).last_name}
                 </div>
-                <div className="text-xs text-gray-400 font-mono mt-0.5">{selected.learner?.learner_id} · {selected.stage?.toUpperCase()}</div>
+                <div className="text-xs text-gray-400 font-mono mt-0.5">
+                  {(selected as any).reg_number} · {(selected as any).programme?.toUpperCase()}
+                </div>
               </div>
               <Button variant="ghost" size="sm" onClick={printTranscript}>Print / PDF</Button>
             </div>

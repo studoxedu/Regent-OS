@@ -6,7 +6,7 @@ import { Select, Field } from '../../components/ui/Form'
 import { ResultStatusBadge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/utils'
-import type { AppUser, AcademicSession, Semester, CourseOffering, GradeScale, LearnerEnrollment } from '../../types'
+import type { AppUser, AcademicSession, Semester, CourseOffering, GradeScale } from '../../types'
 
 interface Props { appUser: AppUser }
 
@@ -23,14 +23,25 @@ interface Lecturer {
   name: string
 }
 
+/** Tertiary students live in `students` (admitted via create_student), NOT in
+ *  learner_enrollments — that's the K-12 model and is always empty for a
+ *  university. course_registrations.student_id is the tertiary link, and it's
+ *  what the lecturer's score-entry page already reads. */
+interface TertStudentLite {
+  id: string
+  reg_number: string
+  first_name: string
+  last_name: string
+}
+
 interface Registration {
   id: string
   offering_id: string
-  enrollment_id: string
+  student_id: string
   ca_score: number | null
   exam_score: number | null
   grade: string | null
-  enrollment?: LearnerEnrollment & { learner?: { first_name: string; last_name: string; learner_id: string } }
+  student?: TertStudentLite
 }
 
 function computeGrade(total: number, scales: GradeScale[]): string {
@@ -45,7 +56,7 @@ export default function CourseRegistration({ appUser }: Props) {
   const [semesters, setSemesters]       = useState<Semester[]>([])
   const [offerings, setOfferings]       = useState<CourseOffering[]>([])
   const [gradeScales, setGradeScales]   = useState<GradeScale[]>([])
-  const [allEnrollments, setAllEnrollments] = useState<(LearnerEnrollment & { learner?: { first_name: string; last_name: string; learner_id: string } })[]>([])
+  const [allStudents, setAllStudents]   = useState<TertStudentLite[]>([])
   const [allCourses, setAllCourses]     = useState<Course[]>([])
   const [lecturers, setLecturers]       = useState<Lecturer[]>([])
 
@@ -62,7 +73,7 @@ export default function CourseRegistration({ appUser }: Props) {
   const [scores, setScores]                     = useState<Record<string, { ca: string; exam: string }>>({})
   const [savingScore, setSavingScore]           = useState<string | null>(null)
   const [addingReg, setAddingReg]               = useState<string | null>(null)
-  const [newEnrollmentId, setNewEnrollmentId]   = useState('')
+  const [newStudentId, setNewStudentId]         = useState('')
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
   function flash(msg: string, type: 'success' | 'error' = 'success') {
@@ -74,13 +85,13 @@ export default function CourseRegistration({ appUser }: Props) {
     Promise.all([
       supabase.from('academic_sessions').select('*').eq('school_id', schoolId).order('created_at', { ascending: false }),
       supabase.from('grade_scales').select('*').eq('school_id', schoolId).order('min_score', { ascending: false }),
-      supabase.from('learner_enrollments').select('*, learner:learners(first_name, last_name, learner_id)')
-        .eq('school_id', schoolId).eq('status', 'active').order('created_at'),
+      supabase.from('students').select('id, reg_number, first_name, last_name')
+        .eq('institution_id', schoolId).eq('status', 'active').order('reg_number'),
       supabase.from('faculties').select('id').eq('school_id', schoolId),
-    ]).then(async ([{ data: sess }, { data: gs }, { data: en }, { data: facs }]) => {
+    ]).then(async ([{ data: sess }, { data: gs }, { data: studs }, { data: facs }]) => {
       setSessions((sess ?? []) as AcademicSession[])
       setGradeScales((gs ?? []) as GradeScale[])
-      setAllEnrollments((en ?? []) as any[])
+      setAllStudents((studs ?? []) as TertStudentLite[])
       if (sess && sess.length > 0) setSelectedSession(sess[0].id)
 
       // Load courses scoped to this school via faculties → departments
@@ -130,7 +141,7 @@ export default function CourseRegistration({ appUser }: Props) {
 
   async function loadRegistrations(offeringId: string) {
     const { data } = await supabase.from('course_registrations')
-      .select('*, enrollment:learner_enrollments(*, learner:learners(first_name, last_name, learner_id))')
+      .select('*, student:students(id, reg_number, first_name, last_name)')
       .eq('offering_id', offeringId)
     const regs = (data ?? []) as Registration[]
     setRegistrations(prev => ({ ...prev, [offeringId]: regs }))
@@ -163,13 +174,13 @@ export default function CourseRegistration({ appUser }: Props) {
   }
 
   async function addRegistration(offeringId: string) {
-    if (!newEnrollmentId) return
+    if (!newStudentId) return
     const { error } = await supabase.from('course_registrations').insert({
-      offering_id:   offeringId,
-      enrollment_id: newEnrollmentId,
+      offering_id: offeringId,
+      student_id:  newStudentId,
     })
     if (error) { flash(error.message, 'error'); return }
-    setNewEnrollmentId('')
+    setNewStudentId('')
     setAddingReg(null)
     flash('Student registered.')
     loadRegistrations(offeringId)
@@ -342,7 +353,7 @@ export default function CourseRegistration({ appUser }: Props) {
                       </thead>
                       <tbody>
                         {regs.map(r => {
-                          const en = r.enrollment as any
+                          const st = r.student
                           const s = scores[r.id] ?? { ca: '', exam: '' }
                           const ca   = parseFloat(s.ca) || 0
                           const exam = parseFloat(s.exam) || 0
@@ -352,9 +363,9 @@ export default function CourseRegistration({ appUser }: Props) {
                           return (
                             <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50/40">
                               <td className="px-4 py-3 text-sm font-semibold text-navy-900">
-                                {en?.learner?.first_name} {en?.learner?.last_name}
+                                {st?.first_name} {st?.last_name}
                               </td>
-                              <td className="px-4 py-3 text-xs font-mono text-gray-500">{en?.learner?.learner_id}</td>
+                              <td className="px-4 py-3 text-xs font-mono text-gray-500">{st?.reg_number}</td>
                               <td className="px-4 py-2">
                                 {canEnterScores && isDraft ? (
                                   <input
@@ -419,23 +430,23 @@ export default function CourseRegistration({ appUser }: Props) {
                         <div className="flex items-center gap-2">
                           <div className="w-72">
                             <Select
-                              value={newEnrollmentId}
-                              onChange={e => setNewEnrollmentId(e.target.value)}
+                              value={newStudentId}
+                              onChange={e => setNewStudentId(e.target.value)}
                               placeholder="Select student…"
-                              options={allEnrollments
-                                .filter(en => !regs.some(r => r.enrollment_id === en.id))
-                                .map(en => ({
-                                  value: en.id,
-                                  label: `${(en as any).learner?.first_name} ${(en as any).learner?.last_name} (${(en as any).learner?.learner_id})`,
+                              options={allStudents
+                                .filter(st => !regs.some(r => r.student_id === st.id))
+                                .map(st => ({
+                                  value: st.id,
+                                  label: `${st.first_name} ${st.last_name} (${st.reg_number})`,
                                 }))}
                             />
                           </div>
                           <Button variant="primary" size="sm" onClick={() => addRegistration(o.id)}
-                            disabled={!newEnrollmentId}>Register</Button>
-                          <Button variant="ghost" size="sm" onClick={() => { setAddingReg(null); setNewEnrollmentId('') }}>Cancel</Button>
+                            disabled={!newStudentId}>Register</Button>
+                          <Button variant="ghost" size="sm" onClick={() => { setAddingReg(null); setNewStudentId('') }}>Cancel</Button>
                         </div>
                       ) : (
-                        <Button variant="ghost" size="sm" onClick={() => { setAddingReg(o.id); setNewEnrollmentId('') }}>
+                        <Button variant="ghost" size="sm" onClick={() => { setAddingReg(o.id); setNewStudentId('') }}>
                           + Register Student
                         </Button>
                       )}
