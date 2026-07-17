@@ -22,7 +22,7 @@ const STATUS_STYLE: Record<InvoiceStatus, string> = {
 
 export default function FeeManagement({ appUser }: Props) {
   const schoolId = appUser.activeSchool?.id!
-  const [tab, setTab] = useState<'structures' | 'invoices' | 'payments'>('structures')
+  const [tab, setTab] = useState<'structures' | 'invoices' | 'payments' | 'arrears'>('structures')
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
   // Data
@@ -33,6 +33,18 @@ export default function FeeManagement({ appUser }: Props) {
   const [invPage, setInvPage]         = useState(0)
   const [invTotal, setInvTotal]       = useState(0)
   const [totals, setTotals]           = useState({ due: 0, paid: 0 })
+
+  // Payments ledger
+  const [payments, setPayments]       = useState<any[]>([])
+  const [payPage, setPayPage]         = useState(0)
+  const [payTotal, setPayTotal]       = useState(0)
+
+  // Arrears / aging / collection reports
+  const [arrears, setArrears]         = useState<any[]>([])
+  const [arrPage, setArrPage]         = useState(0)
+  const [arrTotal, setArrTotal]       = useState({ pupils: 0, balance: 0 })
+  const [aging, setAging]             = useState<any[]>([])
+  const [byClass, setByClass]         = useState<any[]>([])
 
   // Category form
   const [catName, setCatName]         = useState('')
@@ -91,7 +103,36 @@ export default function FeeManagement({ appUser }: Props) {
     setInvTotal(invCount ?? 0)
   }
 
+  // Receipts ledger — every payment recorded, newest first.
+  async function loadPayments() {
+    const { data, count } = await supabase
+      .from('fee_payments')
+      .select('*, invoice:fee_invoices(description, enrollment:learner_enrollments(learner:learners(first_name, last_name, learner_id)))', { count: 'exact' })
+      .eq('school_id', schoolId)
+      .order('recorded_at', { ascending: false })
+      .range(payPage * INV_PAGE_SIZE, payPage * INV_PAGE_SIZE + INV_PAGE_SIZE - 1)
+    setPayments(data ?? [])
+    setPayTotal(count ?? 0)
+  }
+
+  // Arrears + aging + per-class collection. All server-side aggregates (RPC) —
+  // they must reflect the whole school, not the page on screen.
+  async function loadReports() {
+    const [{ data: rows }, { data: tot }, { data: ag }, { data: bc }] = await Promise.all([
+      supabase.rpc('k12_arrears', { p_school_id: schoolId, p_limit: INV_PAGE_SIZE, p_offset: arrPage * INV_PAGE_SIZE }),
+      supabase.rpc('k12_arrears_total', { p_school_id: schoolId }).single(),
+      supabase.rpc('k12_aging_summary', { p_school_id: schoolId }),
+      supabase.rpc('k12_collection_by_class', { p_school_id: schoolId }),
+    ])
+    setArrears(rows ?? [])
+    setArrTotal({ pupils: Number((tot as any)?.pupils ?? 0), balance: Number((tot as any)?.total_balance ?? 0) })
+    setAging(ag ?? [])
+    setByClass(bc ?? [])
+  }
+
   useEffect(() => { load() }, [schoolId, invPage])
+  useEffect(() => { if (schoolId && tab === 'payments') loadPayments() }, [schoolId, tab, payPage])
+  useEffect(() => { if (schoolId && tab === 'arrears')  loadReports()  }, [schoolId, tab, arrPage])
 
   async function addCategory() {
     if (!catName.trim()) return
@@ -271,11 +312,11 @@ export default function FeeManagement({ appUser }: Props) {
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-gray-200">
-          {(['structures','invoices','payments'] as const).map(t => (
+          {(['structures','invoices','payments','arrears'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2.5 text-sm font-semibold capitalize border-b-2 -mb-px transition-colors ${
                 tab === t ? 'border-navy-800 text-navy-900' : 'border-transparent text-gray-400 hover:text-navy-700'}`}>
-              {t === 'structures' ? 'Fee Setup' : t === 'invoices' ? 'Invoices' : 'Payments'}
+              {t === 'structures' ? 'Fee Setup' : t === 'invoices' ? 'Invoices' : t === 'payments' ? 'Payments' : 'Arrears'}
             </button>
           ))}
         </div>
@@ -450,11 +491,168 @@ export default function FeeManagement({ appUser }: Props) {
 
         {tab === 'payments' && (
           <Card>
-            <CardHeader title="Payment History" />
-            <div className="px-5 py-8 text-center text-sm text-gray-400">
-              Payment history coming soon. Use the Invoices tab to record payments.
-            </div>
+            <CardHeader title="Payment History" meta={payTotal > 0
+              ? `${payPage * INV_PAGE_SIZE + 1}–${Math.min((payPage + 1) * INV_PAGE_SIZE, payTotal)} of ${payTotal}`
+              : '0 payments'} />
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  {['Date', 'Learner', 'Description', 'Amount', 'Method', 'Receipt Ref'].map(h => (
+                    <th key={h} className="px-5 py-2.5 text-left bg-gray-50 border-b border-gray-200 text-[10px] font-bold tracking-[0.08em] uppercase text-gray-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map(pm => {
+                  const learner = pm.invoice?.enrollment?.learner
+                  return (
+                    <tr key={pm.id} className="border-b border-gray-50 hover:bg-gray-50/40">
+                      <td className="px-5 py-3 text-sm text-gray-500">
+                        {pm.recorded_at ? new Date(pm.recorded_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="text-sm font-semibold text-navy-900">
+                          {learner ? `${learner.first_name} ${learner.last_name}` : '—'}
+                        </div>
+                        <div className="text-[11px] text-gray-400 font-mono">{learner?.learner_id}</div>
+                      </td>
+                      <td className="px-5 py-3 text-sm text-gray-600">{pm.invoice?.description ?? '—'}</td>
+                      <td className="px-5 py-3 text-sm font-semibold text-green-700">₦{Number(pm.amount).toLocaleString()}</td>
+                      <td className="px-5 py-3 text-xs uppercase text-gray-500">{pm.payment_method ?? '—'}</td>
+                      <td className="px-5 py-3 font-mono text-xs text-gray-500">{pm.receipt_ref ?? '—'}</td>
+                    </tr>
+                  )
+                })}
+                {payments.length === 0 && (
+                  <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-400">No payments recorded yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+
+            {payTotal > INV_PAGE_SIZE && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200">
+                <span className="text-xs text-gray-400">Page {payPage + 1} of {Math.ceil(payTotal / INV_PAGE_SIZE)}</span>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" disabled={payPage === 0} onClick={() => setPayPage(p => Math.max(0, p - 1))}>← Prev</Button>
+                  <Button variant="ghost" size="sm" disabled={(payPage + 1) * INV_PAGE_SIZE >= payTotal} onClick={() => setPayPage(p => p + 1)}>Next →</Button>
+                </div>
+              </div>
+            )}
           </Card>
+        )}
+
+        {tab === 'arrears' && (
+          <div className="space-y-6">
+            {/* Aging buckets — by the oldest unpaid invoice's due date */}
+            <div>
+              <div className="label mb-3">Aging — {arrTotal.pupils} pupil(s) owing ₦{arrTotal.balance.toLocaleString()}</div>
+              <div className="grid grid-cols-5 gap-3">
+                {aging.length === 0 && (
+                  <Card className="col-span-5 py-8 text-center text-sm text-gray-400">Nothing outstanding — every invoice is settled.</Card>
+                )}
+                {aging.map(a => (
+                  <Card key={a.bucket} className={`px-4 py-3 border-t-2 ${
+                    a.sort_order === 0 ? 'border-t-gray-300'
+                    : a.sort_order === 1 ? 'border-t-yellow-400'
+                    : a.sort_order === 2 ? 'border-t-amber-500'
+                    : a.sort_order === 3 ? 'border-t-orange-500' : 'border-t-red-500'}`}>
+                    <div className="label mb-1">{a.bucket}</div>
+                    <div className="text-lg font-bold text-navy-900">₦{Number(a.amount).toLocaleString()}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{a.pupils} pupil(s)</div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Collection performance per class */}
+            <Card>
+              <CardHeader title="Collection by Class" meta={`${byClass.length} classes`} />
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {['Class', 'Pupils', 'Invoiced', 'Collected', 'Outstanding', 'Collected %'].map(h => (
+                      <th key={h} className="px-5 py-2.5 text-left bg-gray-50 border-b border-gray-200 text-[10px] font-bold tracking-[0.08em] uppercase text-gray-500">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {byClass.map(c => {
+                    const pct = Number(c.invoiced) > 0 ? Math.round((Number(c.collected) / Number(c.invoiced)) * 100) : 0
+                    return (
+                      <tr key={c.class_name} className="border-b border-gray-50 hover:bg-gray-50/40">
+                        <td className="px-5 py-3 text-sm font-semibold text-navy-900">{c.class_name}</td>
+                        <td className="px-5 py-3 text-sm text-gray-500">{c.pupils}</td>
+                        <td className="px-5 py-3 text-sm text-navy-800">₦{Number(c.invoiced).toLocaleString()}</td>
+                        <td className="px-5 py-3 text-sm text-green-700">₦{Number(c.collected).toLocaleString()}</td>
+                        <td className="px-5 py-3 text-sm font-semibold text-red-600">₦{Number(c.outstanding).toLocaleString()}</td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className={`h-full ${pct >= 90 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs font-semibold text-gray-500">{pct}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </Card>
+
+            {/* Who owes what */}
+            <Card>
+              <CardHeader title="Pupils in Arrears" meta={arrTotal.pupils > 0
+                ? `${arrPage * INV_PAGE_SIZE + 1}–${Math.min((arrPage + 1) * INV_PAGE_SIZE, arrTotal.pupils)} of ${arrTotal.pupils}`
+                : 'none'} />
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {['Learner', 'Class', 'Invoiced', 'Paid', 'Balance', 'Oldest Due', 'Overdue'].map(h => (
+                      <th key={h} className="px-5 py-2.5 text-left bg-gray-50 border-b border-gray-200 text-[10px] font-bold tracking-[0.08em] uppercase text-gray-500">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {arrears.map(a => (
+                    <tr key={a.enrollment_id} className="border-b border-gray-50 hover:bg-gray-50/40">
+                      <td className="px-5 py-3">
+                        <div className="text-sm font-semibold text-navy-900">{a.learner_name}</div>
+                        <div className="text-[11px] text-gray-400 font-mono">{a.learner_code}</div>
+                      </td>
+                      <td className="px-5 py-3 text-sm text-gray-600">{a.class_name}</td>
+                      <td className="px-5 py-3 text-sm text-navy-800">₦{Number(a.invoiced).toLocaleString()}</td>
+                      <td className="px-5 py-3 text-sm text-green-700">₦{Number(a.paid).toLocaleString()}</td>
+                      <td className="px-5 py-3 text-sm font-bold text-red-600">₦{Number(a.balance).toLocaleString()}</td>
+                      <td className="px-5 py-3 text-sm text-gray-500">{a.oldest_due ?? '—'}</td>
+                      <td className="px-5 py-3">
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm ${
+                          a.days_overdue === 0 ? 'bg-gray-100 text-gray-500'
+                          : a.days_overdue <= 30 ? 'bg-yellow-100 text-yellow-700'
+                          : a.days_overdue <= 90 ? 'bg-amber-100 text-amber-700'
+                          : 'bg-red-100 text-red-700'}`}>
+                          {a.days_overdue === 0 ? 'Not due' : `${a.days_overdue}d`}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {arrears.length === 0 && (
+                    <tr><td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">No pupil is in arrears.</td></tr>
+                  )}
+                </tbody>
+              </table>
+
+              {arrTotal.pupils > INV_PAGE_SIZE && (
+                <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200">
+                  <span className="text-xs text-gray-400">Page {arrPage + 1} of {Math.ceil(arrTotal.pupils / INV_PAGE_SIZE)}</span>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" disabled={arrPage === 0} onClick={() => setArrPage(p => Math.max(0, p - 1))}>← Prev</Button>
+                    <Button variant="ghost" size="sm" disabled={(arrPage + 1) * INV_PAGE_SIZE >= arrTotal.pupils} onClick={() => setArrPage(p => p + 1)}>Next →</Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
         )}
       </div>
     </>
