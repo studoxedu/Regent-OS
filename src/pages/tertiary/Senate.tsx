@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { flowExecute, supabase } from '../../lib/supabase'
 import { getInstitutionLabels } from '../../lib/institution'
 import type { AppUser } from '../../types'
 
@@ -27,16 +27,25 @@ interface AuditEntry {
   id: string
   capability: string
   actor_user_id: string
+  actor_office: string | null
   created_at: string
   payload: Record<string, unknown>
-  result: Record<string, unknown>
 }
 
 const CAP_LABEL: Record<string, string> = {
-  'result.submit':  'Scores Submitted',
-  'result.verify':  'Results Verified',
-  'result.approve': 'Results Approved',
-  'result.publish': 'Results Published',
+  'results.submit':  'Scores Submitted',
+  'results.verify':  'Results Verified',
+  'results.approve': 'Results Approved',
+  'results.publish': 'Results Published',
+  'results.reject':  'Results Rejected',
+}
+
+const OFFICE_LABEL: Record<string, string> = {
+  lecturer:     'Lecturer',
+  exam_officer: 'Exam Officer',
+  hod:          'HOD',
+  dean:         'Dean',
+  school_admin: 'Administration',
 }
 
 export default function Senate({ appUser }: { appUser: AppUser }) {
@@ -132,19 +141,21 @@ export default function Senate({ appUser }: { appUser: AppUser }) {
   }
 
   async function ratify() {
-    if (!ratifyModal) return
+    if (!ratifyModal || !schoolId) return
     setRatifying(true); setRatifyErr('')
-    const { error } = await supabase.rpc('flow_execute', {
-      p_capability: 'senate.ratify',
-      p_payload: {
+    try {
+      await flowExecute('senate.ratify', schoolId, {
         semester_id:       ratifyModal.id,
         resolution_number: resNum || null,
         meeting_date:      meetDate || null,
         notes:             notes || null,
-      }
-    })
+      })
+    } catch (err) {
+      setRatifying(false)
+      setRatifyErr(err instanceof Error ? err.message : 'Ratification failed')
+      return
+    }
     setRatifying(false)
-    if (error) { setRatifyErr(error.message); return }
     setRatifyOk(`${ratifyModal.session.label} — ${ratifyModal.label} ratified successfully.`)
     setRatifyModal(null)
     setResNum(''); setMeetDate(''); setNotes('')
@@ -270,13 +281,19 @@ export default function Senate({ appUser }: { appUser: AppUser }) {
                                     {' '}{new Date(entry.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
                                   </span>
                                   <span className={`font-semibold flex-shrink-0 w-36 ${
-                                    entry.capability === 'result.publish'  ? 'text-green-700'  :
-                                    entry.capability === 'result.approve'  ? 'text-purple-700' :
-                                    entry.capability === 'result.verify'   ? 'text-blue-700'   :
+                                    entry.capability === 'results.publish'  ? 'text-green-700'  :
+                                    entry.capability === 'results.approve'  ? 'text-purple-700' :
+                                    entry.capability === 'results.verify'   ? 'text-blue-700'   :
+                                    entry.capability === 'results.reject'   ? 'text-red-700'    :
                                     'text-gray-700'
                                   }`}>
                                     {CAP_LABEL[entry.capability] ?? entry.capability}
                                   </span>
+                                  {entry.actor_office && (
+                                    <span className="text-gray-600 flex-shrink-0 w-28">
+                                      {OFFICE_LABEL[entry.actor_office] ?? entry.actor_office}
+                                    </span>
+                                  )}
                                   <span className="text-gray-500 font-mono text-[11px]">
                                     offering: {String(entry.payload?.offering_id ?? '').slice(0,8)}…
                                   </span>
