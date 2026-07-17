@@ -11,6 +11,7 @@ import type { AppUser, FeeCategory, FeeStructure, FeeInvoice, K12Term, InvoiceSt
 interface Props { appUser: AppUser }
 
 const STAGES: Stage[] = ['nursery','primary','jss','sss']
+const INV_PAGE_SIZE = 25
 
 const STATUS_STYLE: Record<InvoiceStatus, string> = {
   unpaid:  'bg-red-50 text-red-600 border-red-200',
@@ -29,6 +30,9 @@ export default function FeeManagement({ appUser }: Props) {
   const [terms, setTerms]             = useState<K12Term[]>([])
   const [structures, setStructures]   = useState<FeeStructure[]>([])
   const [invoices, setInvoices]       = useState<FeeInvoice[]>([])
+  const [invPage, setInvPage]         = useState(0)
+  const [invTotal, setInvTotal]       = useState(0)
+  const [totals, setTotals]           = useState({ due: 0, paid: 0 })
 
   // Category form
   const [catName, setCatName]         = useState('')
@@ -53,20 +57,41 @@ export default function FeeManagement({ appUser }: Props) {
     setToast({ msg, type }); setTimeout(() => setToast(null), 4000)
   }
 
+  // School-wide fee totals. Must be a server-side aggregate — summing only the
+  // rows on the current page would understate the school's position (the old
+  // limit(100) had this bug silently).
+  async function loadTotals() {
+    // Via RPC — PostgREST aggregate functions are disabled on Supabase by
+    // default, so amount_due.sum() 400s. RLS still applies inside the RPC.
+    const { data } = await supabase
+      .rpc('k12_fee_totals', { p_school_id: schoolId })
+      .single()
+    setTotals({
+      due:  Number((data as any)?.total_due ?? 0),
+      paid: Number((data as any)?.total_paid ?? 0),
+    })
+  }
+
   async function load() {
-    const [{ data: cats }, { data: ts }, { data: strs }, { data: invs }] = await Promise.all([
+    loadTotals()
+    const [{ data: cats }, { data: ts }, { data: strs }, { data: invs, count: invCount }] = await Promise.all([
       supabase.from('fee_categories').select('*').eq('school_id', schoolId).order('name'),
       supabase.from('k12_terms').select('*').eq('school_id', schoolId).order('created_at'),
       supabase.from('fee_structures').select('*, category:fee_categories(*), term:k12_terms(*)').eq('school_id', schoolId).order('created_at', { ascending: false }),
-      supabase.from('fee_invoices').select('*, enrollment:learner_enrollments(*, learner:learners(*))').eq('school_id', schoolId).order('created_at', { ascending: false }).limit(100),
+      supabase.from('fee_invoices')
+        .select('*, enrollment:learner_enrollments(*, learner:learners(*))', { count: 'exact' })
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false })
+        .range(invPage * INV_PAGE_SIZE, invPage * INV_PAGE_SIZE + INV_PAGE_SIZE - 1),
     ])
     setCategories((cats ?? []) as FeeCategory[])
     setTerms((ts ?? []) as K12Term[])
     setStructures((strs ?? []) as FeeStructure[])
     setInvoices((invs ?? []) as FeeInvoice[])
+    setInvTotal(invCount ?? 0)
   }
 
-  useEffect(() => { load() }, [schoolId])
+  useEffect(() => { load() }, [schoolId, invPage])
 
   async function addCategory() {
     if (!catName.trim()) return
@@ -184,8 +209,9 @@ export default function FeeManagement({ appUser }: Props) {
     win.document.close()
   }
 
-  const totalDue  = invoices.reduce((s, i) => s + i.amount_due, 0)
-  const totalPaid = invoices.reduce((s, i) => s + i.amount_paid, 0)
+  // School-wide (all invoices), not just the visible page — see loadTotals().
+  const totalDue  = totals.due
+  const totalPaid = totals.paid
   const totalOwed = totalDue - totalPaid
 
   return (
@@ -348,7 +374,9 @@ export default function FeeManagement({ appUser }: Props) {
 
         {tab === 'invoices' && (
           <Card>
-            <CardHeader title="Fee Invoices" meta={`${invoices.length} total`} />
+            <CardHeader title="Fee Invoices" meta={invTotal > 0
+              ? `${invPage * INV_PAGE_SIZE + 1}–${Math.min((invPage + 1) * INV_PAGE_SIZE, invTotal)} of ${invTotal}`
+              : '0 total'} />
             <table className="w-full border-collapse">
               <thead>
                 <tr>
@@ -398,6 +426,25 @@ export default function FeeManagement({ appUser }: Props) {
                 )}
               </tbody>
             </table>
+
+            {invTotal > INV_PAGE_SIZE && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200">
+                <span className="text-xs text-gray-400">
+                  Page {invPage + 1} of {Math.ceil(invTotal / INV_PAGE_SIZE)}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" disabled={invPage === 0}
+                    onClick={() => setInvPage(p => Math.max(0, p - 1))}>
+                    ← Prev
+                  </Button>
+                  <Button variant="ghost" size="sm"
+                    disabled={(invPage + 1) * INV_PAGE_SIZE >= invTotal}
+                    onClick={() => setInvPage(p => p + 1)}>
+                    Next →
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         )}
 

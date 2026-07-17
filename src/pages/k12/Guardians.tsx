@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Topbar } from '../../components/layout/Topbar'
 import { Card, CardHeader, Alert } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -13,6 +13,7 @@ interface GuardianWithLinks extends Guardian {
 }
 
 const RELATIONSHIPS = ['Father', 'Mother', 'Guardian', 'Sibling', 'Uncle', 'Aunt', 'Grandparent']
+const PAGE_SIZE = 25
 
 export default function Guardians({ appUser }: Props) {
   const schoolId = appUser.activeSchool?.id!
@@ -21,6 +22,12 @@ export default function Guardians({ appUser }: Props) {
   const [enrollments, setEnrollments] = useState<LearnerEnrollment[]>([])
   const [loading, setLoading]         = useState(true)
   const [toast, setToast]             = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+
+  // Paging + search
+  const [page, setPage]               = useState(0)
+  const [total, setTotal]             = useState(0)
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch]           = useState('')
 
   // Add guardian form
   const [showForm, setShowForm]   = useState(false)
@@ -38,13 +45,26 @@ export default function Guardians({ appUser }: Props) {
     setToast({ msg, type }); setTimeout(() => setToast(null), 4000)
   }
 
-  async function loadData() {
-    const [{ data: gs }, { data: links }, { data: en }] = await Promise.all([
-      supabase.from('guardians').select('*').order('last_name').order('first_name'),
-      supabase.from('guardian_links').select('*, learner:learners(first_name, last_name, learner_id)'),
-      supabase.from('learner_enrollments').select('*, learner:learners(first_name, last_name, learner_id)')
-        .eq('school_id', schoolId).eq('status', 'active').order('created_at'),
-    ])
+  // Server-side paging + search. `guardians` has no school_id — RLS scopes it
+  // to guardians linked to this school's learners, so the count is already
+  // school-correct. Links are fetched only for the visible page, never all.
+  const loadGuardians = useCallback(async () => {
+    setLoading(true)
+    let q = supabase.from('guardians').select('*', { count: 'exact' })
+
+    const s = search.trim().replace(/[%,()]/g, '')
+    if (s) q = q.or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`)
+
+    const { data: gs, count } = await q
+      .order('last_name').order('first_name')
+      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
+
+    const ids = ((gs ?? []) as Guardian[]).map(g => g.id)
+    const { data: links } = ids.length
+      ? await supabase.from('guardian_links')
+          .select('*, learner:learners(first_name, last_name, learner_id)')
+          .in('guardian_id', ids)
+      : { data: [] as any[] }
 
     const linksByGuardian = ((links ?? []) as any[]).reduce((acc: Record<string, any[]>, l) => {
       if (!acc[l.guardian_id]) acc[l.guardian_id] = []
@@ -56,17 +76,29 @@ export default function Guardians({ appUser }: Props) {
       return acc
     }, {})
 
-    const enriched: GuardianWithLinks[] = ((gs ?? []) as Guardian[]).map(g => ({
-      ...g,
-      links: linksByGuardian[g.id] ?? [],
-    }))
-
-    setGuardians(enriched)
-    setEnrollments((en ?? []) as LearnerEnrollment[])
+    setGuardians(((gs ?? []) as Guardian[]).map(g => ({ ...g, links: linksByGuardian[g.id] ?? [] })))
+    setTotal(count ?? 0)
     setLoading(false)
-  }
+  }, [page, search])
 
-  useEffect(() => { loadData() }, [schoolId])
+  // Learner picker for the "link to learner" dropdown — loaded once.
+  const loadEnrollments = useCallback(async () => {
+    const { data } = await supabase
+      .from('learner_enrollments').select('*, learner:learners(first_name, last_name, learner_id)')
+      .eq('school_id', schoolId).eq('status', 'active').order('created_at')
+    setEnrollments((data ?? []) as LearnerEnrollment[])
+  }, [schoolId])
+
+  // Kept so existing call sites refresh after add/link.
+  function loadData() { loadGuardians(); loadEnrollments() }
+
+  useEffect(() => { loadGuardians() }, [loadGuardians])
+  useEffect(() => { if (schoolId) loadEnrollments() }, [schoolId, loadEnrollments])
+
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchInput); setPage(0) }, 350)
+    return () => clearTimeout(t)
+  }, [searchInput])
 
   async function addGuardian() {
     if (!form.first_name.trim() || !form.last_name.trim()) return
@@ -205,14 +237,27 @@ export default function Guardians({ appUser }: Props) {
 
         {loading ? (
           <div className="text-sm text-gray-400 text-center py-12">Loading…</div>
-        ) : guardians.length === 0 ? (
+        ) : guardians.length === 0 && !search ? (
           <Card className="py-16 text-center">
             <div className="text-sm font-semibold text-gray-500 mb-1">No guardians registered</div>
             <div className="text-xs text-gray-400">Add guardians and link them to learners to enable portal access.</div>
           </Card>
         ) : (
           <Card>
-            <CardHeader title="Registered Guardians" meta={`${guardians.length} total`} />
+            <CardHeader
+              title="Registered Guardians"
+              meta={total > 0
+                ? `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, total)} of ${total}`
+                : '0 total'}
+              action={
+                <Input
+                  className="w-64"
+                  placeholder="Search name, email or phone…"
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                />
+              }
+            />
             <table className="w-full border-collapse">
               <thead>
                 <tr>
@@ -256,8 +301,32 @@ export default function Guardians({ appUser }: Props) {
                     </td>
                   </tr>
                 ))}
+                {guardians.length === 0 && search && (
+                  <tr><td colSpan={5} className="px-5 py-10 text-sm text-gray-400 text-center">
+                    No guardians match “{search}”.
+                  </td></tr>
+                )}
               </tbody>
             </table>
+
+            {total > PAGE_SIZE && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200">
+                <span className="text-xs text-gray-400">
+                  Page {page + 1} of {Math.ceil(total / PAGE_SIZE)}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" disabled={page === 0 || loading}
+                    onClick={() => setPage(p => Math.max(0, p - 1))}>
+                    ← Prev
+                  </Button>
+                  <Button variant="ghost" size="sm"
+                    disabled={(page + 1) * PAGE_SIZE >= total || loading}
+                    onClick={() => setPage(p => p + 1)}>
+                    Next →
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         )}
       </div>

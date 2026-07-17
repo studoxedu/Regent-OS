@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Topbar } from '../../components/layout/Topbar'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -13,6 +13,7 @@ import type { AppUser, LearnerEnrollment, K12Class, Stage } from '../../types'
 interface Props { appUser: AppUser }
 
 const K12_STAGES: Stage[] = ['nursery', 'primary', 'jss', 'sss']
+const PAGE_SIZE = 25
 
 // ── Migration: bulk learner import ────────────────────────────
 interface BulkRow {
@@ -51,6 +52,12 @@ export default function K12Enrollment({ appUser }: Props) {
   const [enrollments, setEnrollments] = useState<LearnerEnrollment[]>([])
   const [classes, setClasses]         = useState<K12Class[]>([])
   const [loading, setLoading]         = useState(true)
+
+  // Paging + search
+  const [page, setPage]               = useState(0)
+  const [total, setTotal]             = useState(0)
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch]           = useState('')
   const [enrollOpen, setEnrollOpen]   = useState(false)
   const [saving, setSaving]           = useState(false)
   const [toast, setToast]             = useState<string | null>(null)
@@ -172,26 +179,51 @@ export default function K12Enrollment({ appUser }: Props) {
     URL.revokeObjectURL(url)
   }
 
-  function loadData() {
-    Promise.all([
-      supabase
-        .from('learner_enrollments')
-        .select('*, learner:learners(*), class:k12_classes(name)')
-        .eq('school_id', schoolId)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('k12_classes')
-        .select('*')
-        .eq('school_id', schoolId)
-        .order('stage').order('name'),
-    ]).then(([{ data: en }, { data: cls }]) => {
-      setEnrollments((en ?? []) as LearnerEnrollment[])
-      setClasses((cls ?? []) as K12Class[])
-      setLoading(false)
-    })
-  }
+  const loadClasses = useCallback(async () => {
+    const { data } = await supabase
+      .from('k12_classes').select('*').eq('school_id', schoolId).order('stage').order('name')
+    setClasses((data ?? []) as K12Class[])
+  }, [schoolId])
 
-  useEffect(() => { if (schoolId) loadData() }, [schoolId])
+  // Server-side paging + search — a 1,000-pupil roster must never be pulled
+  // into the browser in one go. `learners!inner` lets the name/ID search
+  // filter the enrollment rows themselves (not just the embedded learner).
+  const loadEnrollments = useCallback(async () => {
+    if (!schoolId) return
+    setLoading(true)
+    let q = supabase
+      .from('learner_enrollments')
+      .select('*, learner:learners!inner(*), class:k12_classes(name)', { count: 'exact' })
+      .eq('school_id', schoolId)
+
+    const s = search.trim().replace(/[%,()]/g, '')
+    if (s) {
+      q = q.or(
+        `first_name.ilike.%${s}%,last_name.ilike.%${s}%,learner_id.ilike.%${s}%`,
+        { referencedTable: 'learner' },
+      )
+    }
+
+    const { data, count } = await q
+      .order('created_at', { ascending: false })
+      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
+
+    setEnrollments((data ?? []) as LearnerEnrollment[])
+    setTotal(count ?? 0)
+    setLoading(false)
+  }, [schoolId, page, search])
+
+  // Kept so existing call sites (enroll, NIN edit, class assign, import) refresh.
+  function loadData() { loadEnrollments() }
+
+  useEffect(() => { if (schoolId) loadClasses() }, [schoolId, loadClasses])
+  useEffect(() => { loadEnrollments() }, [loadEnrollments])
+
+  // Debounce the search box, and go back to page 1 on a new term.
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchInput); setPage(0) }, 350)
+    return () => clearTimeout(t)
+  }, [searchInput])
 
   async function handleEnroll() {
     if (!form.first_name || !form.last_name || !form.stage) return
@@ -282,7 +314,7 @@ export default function K12Enrollment({ appUser }: Props) {
     <>
       <Topbar
         title="Enrollment"
-        meta={`${enrollments.length} learners`}
+        meta={`${total} learners`}
         actions={
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => { setBulkOpen(true); setBulkRows([]); setCsvText(''); setImportDone(false) }}>
@@ -297,7 +329,20 @@ export default function K12Enrollment({ appUser }: Props) {
 
       <div className="p-8">
         <Card>
-          <CardHeader title="All Learners" meta={`${enrollments.length} total`} />
+          <CardHeader
+            title="All Learners"
+            meta={total > 0
+              ? `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, total)} of ${total}`
+              : '0 total'}
+            action={
+              <Input
+                className="w-64"
+                placeholder="Search name or learner ID…"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+              />
+            }
+          />
           <table className="w-full border-collapse">
             <thead>
               <tr>
@@ -371,10 +416,31 @@ export default function K12Enrollment({ appUser }: Props) {
                 </tr>
               ))}
               {!loading && enrollments.length === 0 && (
-                <tr><td colSpan={8} className="px-5 py-10 text-sm text-gray-400 text-center">No learners enrolled yet.</td></tr>
+                <tr><td colSpan={8} className="px-5 py-10 text-sm text-gray-400 text-center">
+                  {search ? `No learners match “${search}”.` : 'No learners enrolled yet.'}
+                </td></tr>
               )}
             </tbody>
           </table>
+
+          {total > PAGE_SIZE && (
+            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200">
+              <span className="text-xs text-gray-400">
+                Page {page + 1} of {Math.ceil(total / PAGE_SIZE)}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" disabled={page === 0 || loading}
+                  onClick={() => setPage(p => Math.max(0, p - 1))}>
+                  ← Prev
+                </Button>
+                <Button variant="ghost" size="sm"
+                  disabled={(page + 1) * PAGE_SIZE >= total || loading}
+                  onClick={() => setPage(p => p + 1)}>
+                  Next →
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
 
