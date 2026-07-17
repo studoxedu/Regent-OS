@@ -1,139 +1,213 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Topbar } from '../../components/layout/Topbar'
-import { Card, CardHeader } from '../../components/ui/Card'
+import { Card, CardHeader, Alert } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { Select } from '../../components/ui/Form'
 import { ConfirmModal } from '../../components/ui/Modal'
 import { supabase, flowExecute } from '../../lib/supabase'
-import type { AppUser, Stage } from '../../types'
-
-const STAGE_LABELS: Record<Stage, string> = {
-  nursery: 'Nursery', primary: 'Primary', jss: 'Junior Secondary',
-  sss: 'Senior Secondary', nd: 'ND', hnd: 'HND', nce: 'NCE', degree: 'Degree',
-}
+import type { AppUser, K12Class, LearnerEnrollment } from '../../types'
 
 interface Props { appUser: AppUser }
 
-interface StageCount { stage: string; count: number }
-
-const PROMOTION_STAGES = ['nursery', 'primary', 'jss', 'sss'] as const
-
 export default function K12Promotion({ appUser }: Props) {
   const schoolId = appUser.activeSchool?.id ?? ''
-  const [stageCounts, setStageCounts] = useState<StageCount[]>([])
-  const [selected, setSelected] = useState<string | null>(null)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!schoolId) return
-    supabase
-      .from('learner_enrollments')
-      .select('stage')
-      .eq('school_id', schoolId)
-      .eq('status', 'active')
-      .then(({ data }) => {
-        const counts: Record<string, number> = {}
-        for (const row of data ?? []) {
-          counts[row.stage] = (counts[row.stage] ?? 0) + 1
-        }
-        setStageCounts(Object.entries(counts).map(([stage, count]) => ({ stage, count })))
-      })
+  const [classes, setClasses]         = useState<K12Class[]>([])
+  const [selectedId, setSelectedId]   = useState('')
+  const [pupils, setPupils]           = useState<LearnerEnrollment[]>([])
+  const [excluded, setExcluded]       = useState<Set<string>>(new Set())
+  const [loading, setLoading]         = useState(false)
+  const [running, setRunning]         = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [toast, setToast]             = useState<string | null>(null)
+
+  const selected    = classes.find(c => c.id === selectedId) ?? null
+  const destination = selected?.next_class_id ? classes.find(c => c.id === selected.next_class_id) ?? null : null
+  const graduating  = selected?.is_graduating_class === true
+  const configured  = graduating || !!destination
+
+  const included = pupils.filter(p => !excluded.has(p.id))
+
+  const loadClasses = useCallback(async () => {
+    const { data } = await supabase
+      .from('k12_classes').select('*').eq('school_id', schoolId).order('stage').order('name')
+    setClasses((data ?? []) as K12Class[])
   }, [schoolId])
 
-  async function runPromotion() {
-    if (!selected) return
+  const loadPupils = useCallback(async () => {
+    if (!selectedId) { setPupils([]); return }
     setLoading(true)
-    setConfirmOpen(false)
+    const { data } = await supabase
+      .from('learner_enrollments')
+      .select('*, learner:learners(first_name, last_name, learner_id)')
+      .eq('school_id', schoolId).eq('class_id', selectedId).eq('status', 'active')
+      .order('created_at')
+    setPupils((data ?? []) as LearnerEnrollment[])
+    setExcluded(new Set())
+    setLoading(false)
+  }, [schoolId, selectedId])
+
+  useEffect(() => { if (schoolId) loadClasses() }, [schoolId, loadClasses])
+  useEffect(() => { loadPupils() }, [loadPupils])
+
+  function toggle(id: string) {
+    setExcluded(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  async function run() {
+    setRunning(true); setConfirmOpen(false)
     try {
-      await flowExecute('learner.promote', schoolId, {
-        stage: selected,
-        academic_session: '2024/2025',
+      const res = await flowExecute('learner.promote', schoolId, {
+        enrollment_ids: included.map(p => p.id),
       })
-      showToast(`Promotion run for ${STAGE_LABELS[selected as Stage] ?? selected}. Audit entry created.`)
-      setSelected(null)
+      const r = (res?.result ?? {}) as Record<string, number>
+      const bits = [
+        r.promoted  ? `${r.promoted} promoted to ${destination?.name}` : '',
+        r.graduated ? `${r.graduated} graduated` : '',
+        r.skipped   ? `${r.skipped} skipped (no ladder set)` : '',
+      ].filter(Boolean)
+      showToast(bits.length ? `${bits.join(' · ')}. Audit entry created.` : 'Nothing to do.')
+      loadPupils()
     } catch (err) {
       showToast(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
-      setLoading(false)
+      setRunning(false)
     }
   }
 
-  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 5000) }
+  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 6000) }
 
-  const selectedCount = stageCounts.find(s => s.stage === selected)?.count ?? 0
+  const outcomeLabel = graduating
+    ? `${included.length} will graduate`
+    : destination
+    ? `${included.length} will move to ${destination.name}`
+    : 'This class has no promotion ladder set'
 
   return (
     <>
-      <Topbar title="Promotion" meta="Advance learners to the next level" />
+      <Topbar title="Promotion" meta="End-of-year promotion, repeats and graduation" />
 
-      <div className="p-8 max-w-2xl">
-        <div className="bg-amber-50 border border-amber-200 rounded-sm px-5 py-4 mb-6 text-sm text-amber-800">
-          <strong>Promotion is a logged, irreversible action.</strong> It advances all active learners in a stage to the next ordinal. Run at end of academic year only.
-        </div>
+      <div className="p-8 max-w-4xl space-y-6">
+        <Alert type="warning">
+          <strong>Promotion is logged and cannot be undone.</strong> Finalise term results first.
+          Untick any pupil who should repeat the year — they stay where they are.
+        </Alert>
 
         <Card>
-          <CardHeader title="Select Stage to Promote" meta="Learners advance to the next level within their stage" />
-          <div className="p-5 space-y-3">
-            {PROMOTION_STAGES.map(stage => {
-              const count = stageCounts.find(s => s.stage === stage)?.count ?? 0
-              return (
-                <label
-                  key={stage}
-                  className={`flex items-center justify-between p-4 border rounded-sm cursor-pointer transition-colors ${
-                    selected === stage
-                      ? 'border-navy-900 bg-navy-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="stage"
-                      value={stage}
-                      checked={selected === stage}
-                      onChange={() => setSelected(stage)}
-                      className="accent-navy-900"
-                    />
-                    <div>
-                      <div className="text-sm font-semibold text-navy-900">{STAGE_LABELS[stage] ?? stage}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {count > 0 ? `${count} active learner${count !== 1 ? 's' : ''}` : 'No active learners'}
-                      </div>
-                    </div>
-                  </div>
-                  {count > 0 && (
-                    <span className="text-xs font-bold text-navy-700 bg-navy-100 px-2 py-0.5 rounded-full">
-                      {count}
-                    </span>
-                  )}
-                </label>
-              )
-            })}
-          </div>
+          <CardHeader title="Choose a class to promote" meta={`${classes.length} classes`} />
+          <div className="p-5 space-y-4">
+            <div className="w-80">
+              <label className="label mb-1.5 block">Class</label>
+              <Select
+                value={selectedId}
+                onChange={e => setSelectedId(e.target.value)}
+                placeholder="Select a class…"
+                options={classes.map(c => ({ value: c.id, label: c.name }))}
+              />
+            </div>
 
-          <div className="px-5 py-4 border-t border-gray-200 flex justify-end">
-            <Button
-              variant="amber"
-              onClick={() => setConfirmOpen(true)}
-              disabled={!selected || selectedCount === 0 || loading}
-            >
-              Run Promotion →
-            </Button>
+            {selected && (
+              <div className="flex items-center gap-3 text-sm">
+                <span className="font-semibold text-navy-900">{selected.name}</span>
+                <span className="text-gray-400">→</span>
+                {graduating ? (
+                  <span className="font-semibold text-green-700">Graduates (final year)</span>
+                ) : destination ? (
+                  <span className="font-semibold text-blue-700">{destination.name}</span>
+                ) : (
+                  <span className="font-semibold text-red-600">No ladder set</span>
+                )}
+              </div>
+            )}
+
+            {selected && !configured && (
+              <Alert type="danger">
+                <strong>{selected.name} has no promotion ladder.</strong> Set what it promotes into
+                (or mark it as the final year) under <em>Setup → Classes &amp; Subjects</em>.
+                Promotion will skip these pupils rather than guess.
+              </Alert>
+            )}
           </div>
         </Card>
+
+        {selected && (
+          <Card>
+            <CardHeader
+              title="Pupils"
+              meta={loading ? 'Loading…' : `${included.length} of ${pupils.length} selected · ${pupils.length - included.length} repeating`}
+            />
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  {['', 'Learner', 'Learner ID', 'Outcome'].map(h => (
+                    <th key={h} className="px-5 py-2.5 text-left bg-gray-50 border-b border-gray-200 text-[10px] font-bold tracking-[0.08em] uppercase text-gray-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pupils.map(p => {
+                  const learner = (p as any).learner
+                  const isOut = excluded.has(p.id)
+                  return (
+                    <tr key={p.id} className={`border-b border-gray-50 ${isOut ? 'bg-gray-50/60' : 'hover:bg-gray-50/40'}`}>
+                      <td className="px-5 py-3">
+                        <input type="checkbox" checked={!isOut} onChange={() => toggle(p.id)} className="accent-blue-600" />
+                      </td>
+                      <td className="px-5 py-3 text-sm font-semibold text-navy-900">
+                        {learner?.first_name} {learner?.last_name}
+                      </td>
+                      <td className="px-5 py-3 font-mono text-xs text-gray-400">{learner?.learner_id}</td>
+                      <td className="px-5 py-3 text-xs">
+                        {isOut
+                          ? <span className="text-gray-500 font-semibold">Repeats {selected.name}</span>
+                          : graduating
+                          ? <span className="text-green-700 font-semibold">Graduates</span>
+                          : destination
+                          ? <span className="text-blue-700 font-semibold">→ {destination.name}</span>
+                          : <span className="text-red-600 font-semibold">Skipped — no ladder</span>}
+                      </td>
+                    </tr>
+                  )
+                })}
+                {!loading && pupils.length === 0 && (
+                  <tr><td colSpan={4} className="px-5 py-10 text-sm text-gray-400 text-center">No active pupils in this class.</td></tr>
+                )}
+              </tbody>
+            </table>
+
+            <div className="px-5 py-4 border-t border-gray-200 flex items-center justify-between">
+              <span className="text-sm text-gray-500">{outcomeLabel}</span>
+              <Button
+                variant="amber"
+                onClick={() => setConfirmOpen(true)}
+                disabled={running || !configured || included.length === 0}
+              >
+                {graduating ? 'Graduate Pupils →' : 'Run Promotion →'}
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
 
       <ConfirmModal
         open={confirmOpen}
-        title="Confirm Promotion Run"
-        message={<>This will advance <strong>{selectedCount}</strong> learner(s) in <strong>{STAGE_LABELS[(selected ?? '') as Stage] ?? selected}</strong> to the next level.</>}
-        warning="This action is logged and cannot be reversed. Ensure term results have been finalised before promoting."
-        confirmLabel="Run Promotion"
+        title={graduating ? 'Confirm Graduation' : 'Confirm Promotion'}
+        message={
+          graduating
+            ? <>This will graduate <strong>{included.length}</strong> pupil(s) from <strong>{selected?.name}</strong> and mark them as leavers.</>
+            : <>This will move <strong>{included.length}</strong> pupil(s) from <strong>{selected?.name}</strong> into <strong>{destination?.name}</strong>.
+               {pupils.length - included.length > 0 && <> <strong>{pupils.length - included.length}</strong> will repeat {selected?.name}.</>}</>
+        }
+        warning="This action is logged and cannot be reversed."
+        confirmLabel={graduating ? 'Graduate' : 'Run Promotion'}
         confirmVariant="amber"
-        onConfirm={runPromotion}
+        onConfirm={run}
         onClose={() => setConfirmOpen(false)}
-        loading={loading}
+        loading={running}
       />
 
       {toast && (

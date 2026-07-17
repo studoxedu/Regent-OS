@@ -295,6 +295,11 @@ export interface K12Class {
   name: string
   stage: Stage
   class_teacher_membership_id: string | null
+  /** The class this class's pupils promote into. null = not configured
+   *  (promotion skips them) unless is_graduating_class is set. */
+  next_class_id: string | null
+  /** Final year — its pupils graduate instead of being promoted. */
+  is_graduating_class: boolean
   created_at: string
   class_teacher?: Membership & { profile?: Profile }
 }

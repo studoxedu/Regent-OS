@@ -8,6 +8,9 @@ import type { AppUser, K12Class, K12Subject, Stage } from '../../types'
 
 interface Props { appUser: AppUser }
 
+/** Sentinel for the "final year" option in the Promotes-to picker. */
+const GRAD = '__graduates__'
+
 const STAGES: Stage[] = ['nursery','primary','jss','sss']
 
 export default function K12Classes({ appUser }: Props) {
@@ -64,6 +67,18 @@ export default function K12Classes({ appUser }: Props) {
     setSavingSubject(false)
     if (error) { flash(error.message, 'error'); return }
     setSubjectName(''); setSubjectStage(''); flash('Subject added.'); load()
+  }
+
+  // Progression ladder: a class either promotes into another class, or is the
+  // final year (graduates) — never both (enforced by a DB check too).
+  async function setProgression(classId: string, value: string) {
+    const patch = value === GRAD
+      ? { next_class_id: null, is_graduating_class: true }
+      : { next_class_id: value || null, is_graduating_class: false }
+    const { error } = await supabase.from('k12_classes').update(patch).eq('id', classId)
+    if (error) { flash(error.message, 'error'); return }
+    flash('Promotion ladder updated.')
+    load()
   }
 
   async function deleteClass(id: string) {
@@ -130,6 +145,12 @@ export default function K12Classes({ appUser }: Props) {
               </div>
             </Card>
 
+            <Alert type="info">
+              <strong>Promotion ladder.</strong> Set what each class promotes into — this is what
+              end-of-year Promotion follows (e.g. JSS 1A → JSS 2A). Mark your final year as
+              “Graduates”. A class left unset is skipped at promotion rather than graduated.
+            </Alert>
+
             {/* Classes by stage */}
             {STAGES.map(stage => (
               classesByStage[stage].length > 0 && (
@@ -137,9 +158,21 @@ export default function K12Classes({ appUser }: Props) {
                   <div className="label mb-3">{stage.toUpperCase()}</div>
                   <div className="grid grid-cols-3 gap-3">
                     {classesByStage[stage].map(cls => (
-                      <Card key={cls.id} className="px-4 py-3 flex items-center justify-between">
-                        <span className="text-sm font-semibold text-navy-900">{cls.name}</span>
-                        <button onClick={() => deleteClass(cls.id)} className="text-gray-300 hover:text-red-500 text-xs cursor-pointer">×</button>
+                      <Card key={cls.id} className="px-4 py-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold text-navy-900">{cls.name}</span>
+                          <button onClick={() => deleteClass(cls.id)} className="text-gray-300 hover:text-red-500 text-xs cursor-pointer">×</button>
+                        </div>
+                        <label className="label mb-1 block">Promotes to</label>
+                        <Select
+                          value={cls.is_graduating_class ? GRAD : (cls.next_class_id ?? '')}
+                          onChange={e => setProgression(cls.id, e.target.value)}
+                          options={[
+                            { value: '',   label: '— not set —' },
+                            { value: GRAD, label: 'Graduates (final year)' },
+                            ...classes.filter(c => c.id !== cls.id).map(c => ({ value: c.id, label: c.name })),
+                          ]}
+                        />
                       </Card>
                     ))}
                   </div>
