@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rysantech.com.ng/sitemap.xml

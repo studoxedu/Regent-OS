@@ -3,14 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Regent OS — The operating system for running a school | by Rysan</title>
-<meta name="description" content="Regent OS runs the whole school — admissions, records, staff, finance, timetabling, results — on a governance architecture that controls who can do what. K-12 and tertiary. A Rysan Technologies product.">
-<meta property="og:title" content="Regent OS — Run your whole institution from one place">
-<meta property="og:description" content="A school management OS built on a real governance architecture. K-12 and tertiary.">
+<title>Regent OS — School Management Software for Nigeria</title>
+<meta name="description" content="Complete school management system: admissions, records, results, fees, timetables. Built for Nigerian K-12 and tertiary institutions. Works offline.">
+<link rel="canonical" href="https://rysantech.com.ng/regent-os">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Rysan Technologies">
+<meta property="og:title" content="Regent OS — School Management Software for Nigeria">
+<meta property="og:description" content="A school management system built on a real governance architecture. K-12 and tertiary. Works offline.">
 <meta property="og:url" content="https://rysantech.com.ng/regent-os">
 <meta property="og:image" content="https://rysantech.com.ng/og-regent.png">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://rysantech.com.ng/og-regent.png">
 <meta name="theme-color" content="#0A0B0D">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23F5A623'/%3E%3Cpath d='M34 26 H44 V74 H34 Z M44 26 H59 A13.5 13.5 0 0 1 59 53 H44 V44 H58 A4.5 4.5 0 0 0 58 35 H44 Z M50 53 L59 53 L70 74 H59 L49 56 Z' fill='%230A0A0D'/%3E%3C/svg%3E">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
@@ -114,6 +119,16 @@
   .foot-links a{ font-size:14px; color:var(--muted); }
   .foot-links a:hover{ color:var(--amber); }
 
+  /* FAQ */
+  .faq{ max-width:820px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+  .faq details{ border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:4px 24px; transition:border-color .2s; }
+  .faq details[open]{ border-color:var(--line-strong); background:var(--surface-2); }
+  .faq summary{ font-family:'Sora'; font-weight:700; font-size:16.5px; color:var(--silver); cursor:pointer; list-style:none; padding:22px 0; display:flex; justify-content:space-between; align-items:center; gap:20px; }
+  .faq summary::-webkit-details-marker{ display:none; }
+  .faq summary::after{ content:"+"; color:var(--amber); font-size:22px; font-weight:400; flex-shrink:0; transition:transform .2s; }
+  .faq details[open] summary::after{ transform:rotate(45deg); }
+  .faq details p{ color:var(--muted); font-size:15.5px; padding:0 0 24px; margin:0; }
+
   .reveal{ opacity:0; transform:translateY(22px); transition:opacity .7s ease, transform .7s ease; }
   .reveal.in{ opacity:1; transform:none; }
 
@@ -128,6 +143,46 @@
   }
   @media (prefers-reduced-motion:reduce){ .reveal{ transition:none; opacity:1; transform:none;} html{scroll-behavior:auto;} }
 </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Regent OS",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web, Windows",
+  "description": "School management software for Nigerian K-12 and tertiary institutions: admissions, records, staff, finance, timetabling and results.",
+  "url": "https://rysantech.com.ng/regent-os",
+  "publisher": { "@type": "Organization", "name": "Rysan Technologies" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does Regent OS work without internet?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Regent OS is offline-tolerant by design. Staff keep working through power cuts and network outages, and the system syncs when the connection returns. No work is lost." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can it process our results and report cards?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes — continuous assessment, exams, weighted grading, and printable report cards are built in, with approval steps so results cannot be altered without oversight." }
+    },
+    {
+      "@type": "Question",
+      "name": "How much does school management software cost in Nigeria?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Pricing depends on school size and modules. Regent OS is priced for Nigerian institutions, not converted from dollars. Contact us at hello@rysantech.com.ng for a quote for your school." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can one proprietor oversee multiple branches?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. The governance architecture was built for exactly this — full visibility across campuses, with each branch administering only its own." }
+    }
+  ]
+}
+</script>
 </head>
 <body>
 
@@ -150,9 +205,10 @@
   <header class="hero">
     <div class="hero-glow"></div>
     <div class="wrap hero-content">
-      <div class="pill">A <span class="rys">Rysan</span> product · School Management OS</div>
-      <h1>The operating system for <em>running</em> a school.</h1>
-      <p class="hero-sub">Regent OS runs the whole institution — admissions, records, staff, finance, timetabling, results — on a governance architecture that decides exactly who can see, change, and approve what. From a single nursery to a full university.</p>
+      <div class="pill">A <span class="rys">Rysan</span> product · School Management Software</div>
+      <h1><em>School management software</em> built for how Nigerian schools actually run.</h1>
+      <p class="hero-sub">Regent OS is a complete school management system for Nigerian institutions — from a single primary school to a multi-campus tertiary institution. Admissions, student records, results processing, school fees, staff management and timetabling live in one system, governed by a real permission model: who can see, change, and approve what, from proprietor to class teacher.</p>
+      <p class="hero-sub" style="margin-top:16px;">It is built for this market. It tolerates power cuts and patchy networks, runs on desktop and web, and never assumes your school has perfect bandwidth — because we built it here.</p>
       <div class="hero-actions">
         <a href="#contact" class="btn btn-primary">Book a demo</a>
         <a href="#governance" class="btn btn-ghost">The governance model</a>
@@ -241,6 +297,34 @@
             <li>Transcripts and regulatory reports</li>
           </ul>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <div class="wrap">
+      <div class="sec-head reveal" style="margin:0 auto 48px; text-align:center;">
+        <span class="eyebrow">Questions, answered</span>
+        <h2>School management software, without the guesswork.</h2>
+      </div>
+      <div class="faq reveal">
+        <details>
+          <summary>Does Regent OS work without internet?</summary>
+          <p>Yes. Regent OS is offline-tolerant by design. Staff keep working through power cuts and network outages, and the system syncs when the connection returns. No work is lost.</p>
+        </details>
+        <details>
+          <summary>Can it process our results and report cards?</summary>
+          <p>Yes — continuous assessment, exams, weighted grading, and printable report cards are built in, with approval steps so results cannot be altered without oversight.</p>
+        </details>
+        <details>
+          <summary>How much does school management software cost in Nigeria?</summary>
+          <p>Pricing depends on school size and modules. Regent OS is priced for Nigerian institutions, not converted from dollars. Contact us at hello@rysantech.com.ng for a quote for your school.</p>
+        </details>
+        <details>
+          <summary>Can one proprietor oversee multiple branches?</summary>
+          <p>Yes. The governance architecture was built for exactly this — full visibility across campuses, with each branch administering only its own.</p>
+        </details>
       </div>
     </div>
   </section>
