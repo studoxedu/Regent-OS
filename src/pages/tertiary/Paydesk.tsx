@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { flowExecute, supabase } from '../../lib/supabase'
 import type { AppUser } from '../../types'
 
 interface Student {
@@ -25,7 +25,7 @@ interface Payment {
   amount: number
   receipt_ref: string
   payment_method: string
-  created_at: string
+  recorded_at: string
 }
 
 const STATUS_COLORS: Record<string,string> = {
@@ -65,6 +65,8 @@ export default function Paydesk({ appUser }: { appUser: AppUser }) {
   const [histModal, setHistModal] = useState<Invoice | null>(null)
   const [payments, setPayments] = useState<Payment[]>([])
 
+  const [toast, setToast] = useState<string | null>(null)
+
   useEffect(() => { loadInvoices() }, [schoolId])
 
   async function loadInvoices() {
@@ -80,11 +82,14 @@ export default function Paydesk({ appUser }: { appUser: AppUser }) {
   }
 
   async function openCreate() {
+    // students are keyed by institution_id, not school_id — the old query
+    // referenced a non-existent column, so the picker was always empty.
     const { data } = await supabase
       .from('students')
       .select('id, first_name, last_name, reg_number')
-      .eq('school_id', schoolId)
-      .order('last_name')
+      .eq('institution_id', schoolId)
+      .eq('status', 'active')
+      .order('reg_number')
     setStudents((data ?? []) as Student[])
     setIStudentId(''); setIDesc(''); setIAmount(''); setIDue('')
     setCreateErr('')
@@ -93,46 +98,55 @@ export default function Paydesk({ appUser }: { appUser: AppUser }) {
 
   async function createInvoice() {
     if (!iStudentId || !iDesc.trim() || !iAmount) { setCreateErr('Fill all required fields.'); return }
+    if (!schoolId) return
     setCreating(true); setCreateErr('')
-    const { error } = await supabase.rpc('flow_execute', {
-      p_capability: 'fee.invoice_create',
-      p_payload: {
+    try {
+      await flowExecute('fee.invoice_create', schoolId, {
         student_id: iStudentId,
         description: iDesc.trim(),
         amount_due: parseFloat(iAmount),
         due_date: iDue || null,
-      }
-    })
+      })
+    } catch (err) {
+      setCreating(false)
+      setCreateErr(err instanceof Error ? err.message : 'Could not create invoice')
+      return
+    }
     setCreating(false)
-    if (error) { setCreateErr(error.message); return }
     setCreateModal(false)
     loadInvoices()
   }
 
   async function recordPayment() {
-    if (!payModal || !pAmount) { setPayErr('Enter an amount.'); return }
+    if (!payModal || !pAmount || !schoolId) { setPayErr('Enter an amount.'); return }
     setPaying(true); setPayErr('')
-    const { error } = await supabase.rpc('flow_execute', {
-      p_capability: 'fee.payment_record',
-      p_payload: {
+    try {
+      await flowExecute('fee.payment_record', schoolId, {
         invoice_id: payModal.id,
         amount: parseFloat(pAmount),
         receipt_ref: pRef || null,
         payment_method: pMethod,
-      }
-    })
+      })
+    } catch (err) {
+      setPaying(false)
+      setPayErr(err instanceof Error ? err.message : 'Could not record payment')
+      return
+    }
     setPaying(false)
-    if (error) { setPayErr(error.message); return }
     setPayModal(null)
     loadInvoices()
   }
 
   async function waiveInvoice(inv: Invoice) {
+    if (!schoolId) return
     if (!confirm(`Waive invoice "${inv.description}"?`)) return
-    await supabase.rpc('flow_execute', {
-      p_capability: 'fee.waive',
-      p_payload: { invoice_id: inv.id }
-    })
+    try {
+      await flowExecute('fee.waive', schoolId, { invoice_id: inv.id })
+    } catch (err) {
+      // this used to swallow the error entirely — a failed waive looked like a success
+      setToast(err instanceof Error ? err.message : 'Could not waive invoice')
+      return
+    }
     loadInvoices()
   }
 
@@ -140,9 +154,9 @@ export default function Paydesk({ appUser }: { appUser: AppUser }) {
     setHistModal(inv)
     const { data } = await supabase
       .from('fee_payments')
-      .select('id, amount, receipt_ref, payment_method, created_at')
+      .select('id, amount, receipt_ref, payment_method, recorded_at')
       .eq('invoice_id', inv.id)
-      .order('created_at', { ascending: false })
+      .order('recorded_at', { ascending: false })
     setPayments((data ?? []) as Payment[])
   }
 
@@ -379,7 +393,7 @@ export default function Paydesk({ appUser }: { appUser: AppUser }) {
                 <tbody>
                   {payments.map(p => (
                     <tr key={p.id} className="border-b border-gray-100">
-                      <td className="py-2">{new Date(p.created_at).toLocaleDateString('en-GB')}</td>
+                      <td className="py-2">{new Date(p.recorded_at).toLocaleDateString('en-GB')}</td>
                       <td className="py-2 font-medium text-navy-900">₦{p.amount.toLocaleString()}</td>
                       <td className="py-2 capitalize text-gray-600">{p.payment_method}</td>
                       <td className="py-2 text-gray-400">{p.receipt_ref}</td>
@@ -394,6 +408,11 @@ export default function Paydesk({ appUser }: { appUser: AppUser }) {
             </div>
           </div>
         </div>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-navy-900 text-white px-5 py-3 rounded-sm shadow-lg text-sm z-50"
+          onClick={() => setToast(null)}>{toast}</div>
       )}
     </div>
   )
