@@ -20,10 +20,10 @@ DEPLOY (Vercel)
   * Domains: set rysantech.com.ng as the PRIMARY domain and
     www.rysantech.com.ng as a redirect to it (Vercel issues the 301).
 
-STILL TO ADD (raster image assets — see the SEO brief follow-ups)
-  * apple-touch-icon.png (180x180) at the web root — referenced by every page.
-  * logo.png (square, ~112x112+) at the web root — referenced by the homepage
-    Organization JSON-LD. Until added, both simply 404; nothing breaks.
+ICONS (present, generated from the R-tile logo)
+  * apple-touch-icon.png (180x180, full-bleed/opaque) — referenced by every page.
+  * logo.png (512x512, transparent corners) — referenced by the homepage
+    Organization JSON-LD and the blog BlogPosting schema.
 
 BEFORE GOING LIVE — replace placeholders:
   * Email hello@rysantech.com.ng appears on every page -> use your real address.
