@@ -3,14 +3,7 @@
   <url><loc>https://rysantech.com.ng/</loc><lastmod>2026-07-18</lastmod></url>
   <url><loc>https://rysantech.com.ng/regent-os</loc><lastmod>2026-07-18</lastmod></url>
   <url><loc>https://rysantech.com.ng/herald</loc><lastmod>2026-07-18</lastmod></url>
-  <!--
-    Blog posts — staged, kept OUT of the live sitemap while they carry
-    <meta robots="noindex"> as scaffolds. Submitting noindex URLs here would
-    trigger a Search Console "Submitted URL marked noindex" warning. When real
-    copy replaces the placeholder body, remove the noindex tag on each page AND
-    uncomment its <url> line below.
   <url><loc>https://rysantech.com.ng/blog/school-management-software-prices-nigeria</loc><lastmod>2026-07-19</lastmod></url>
   <url><loc>https://rysantech.com.ng/blog/regent-os-vs-safsms</loc><lastmod>2026-07-19</lastmod></url>
   <url><loc>https://rysantech.com.ng/blog/how-rfid-school-attendance-works</loc><lastmod>2026-07-19</lastmod></url>
-  -->
 </urlset>

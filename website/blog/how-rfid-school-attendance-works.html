@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>How RFID School Attendance Works (and What It Costs Per Student)</title>
 <meta name="description" content="How RFID school attendance systems work, how they compare to tap-based and biometric systems, and what they cost per student.">
-<!-- noindex while this article is a scaffold. Remove this tag when full copy lands. -->
-<meta name="robots" content="noindex, follow">
 <link rel="canonical" href="https://rysantech.com.ng/blog/how-rfid-school-attendance-works">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Rysan Technologies">
@@ -139,11 +137,22 @@
       <p class="lede">How RFID school attendance systems actually work, how long-range RFID compares to tap cards and fingerprint scanners, and what a system like this costs per student.</p>
 
       <div class="body">
-        <div class="draft-note"><b>Full article in progress.</b> This explainer is being written. The outline below shows what it will cover; the complete guide — with the technology explained plainly and real per-student costs — is coming shortly.</div>
+        <p>RFID school attendance sounds technical, but the idea is simple: detect a child automatically as they arrive or leave, and record it without anyone having to do anything. This explainer covers how the technology actually works, how long-range RFID compares to tap cards and fingerprint scanners, and what drives the cost per student — so you can judge whether it fits your school.</p>
 
-        <h2>What this explainer will cover</h2>
-        <p>The parts of an RFID attendance system (tags, gate readers, the software behind them), how detection works as a child walks through the gate, and why long-range RFID suits a busy Nigerian school gate better than tap-based or biometric alternatives.</p>
-        <p>It will also cover the honest cost picture — hardware, tags, and the per-student, per-term pricing schools should expect — and how parent SMS alerts fit in.</p>
+        <h2>The parts of an RFID attendance system</h2>
+        <p>There are three pieces. First, a <b>tag</b> for each student — a small, cheap RFID chip, often as a sticker on the backpack or a card in the bag. The tag has no battery; it is powered by the reader&rsquo;s signal when it comes close enough. Second, a <b>reader</b> mounted at the school gate or entrance, with an antenna that detects tags as students pass. Third, the <b>software</b> behind it, which turns each detection into an attendance record tied to the right student — and, in a system like Herald, sends the parent a text message.</p>
+
+        <h2>How detection works at the gate</h2>
+        <p>Long-range attendance systems use passive UHF RFID. As a student walks through the gate, the reader&rsquo;s antenna energises any tag in range; the tag responds with its unique ID; the software matches that ID to a student record and logs the time as an arrival or a departure. It happens in a fraction of a second, at a distance of several metres, with no need to stop, tap, or line up. A whole stream of students can be read as they walk in normally.</p>
+
+        <h2>Long-range RFID vs tap cards and biometrics</h2>
+        <p>Not all &ldquo;RFID attendance&rdquo; is the same. <b>Tap cards</b> (and NFC) work at a few centimetres, so each child has to physically touch a card to a reader — which means a queue at the gate and something for the child to remember and not lose. <b>Fingerprint and face scanners</b> are also one-at-a-time, need physical proximity, and can struggle with dirty hands, wet weather or a crowd. <b>Long-range RFID</b> is the one option that needs no queue, no contact and no action from the child, which is why it suits a busy school gate where dozens of pupils arrive at once. The trade-off is that the tag identifies the bag it is on, not biometrically the person — so tags are bound to a single student record and unrecognised or duplicated tags are flagged.</p>
+
+        <h2>What it costs per student</h2>
+        <p>The honest answer is that it depends on the tags, the reader, and how the software and SMS are priced — but the shape of the cost is predictable. There is a <b>one-off hardware element</b> (the gate reader and antenna, installed once) and a <b>small recurring per-student element</b> (the tag, which is cheap and replaceable, plus the software and any parent SMS). Because the reader is shared across the whole school, the per-student cost falls as more students are enrolled. For a real figure, the sensible approach is a per-student, per-term quote against your gate and student numbers rather than a headline price.</p>
+
+        <h2>Where parent SMS fits in</h2>
+        <p>The attendance log is useful on its own, but the moment parents value most is the alert. A system like Herald sends an SMS to the parent the instant their child is detected entering or leaving — on any phone that can receive a text, with no app and no smartphone required. That is what turns automatic attendance into genuine peace of mind, and it is worth confirming that SMS is included and reliable when you compare systems.</p>
 
         <div class="related">
           <div class="k">The product behind this blog</div>
