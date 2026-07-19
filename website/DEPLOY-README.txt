@@ -26,7 +26,7 @@ ICONS (present, generated from the R-tile logo)
     Organization JSON-LD and the blog BlogPosting schema.
 
 BEFORE GOING LIVE — replace placeholders:
-  * Email hello@rysantech.com.ng appears on every page -> use your real address.
+  * Email rysantechnologies@gmail.com appears on every page -> use your real address.
   * Herald pricing is marked "indicative" -> confirm naira figures first.
   * Stats ("K-12 & Tertiary", "in deployment") -> soften if not yet in real
     schools, before showing investors.
