@@ -32,18 +32,26 @@ export default function ProprietorDashboard({ appUser }: Props) {
 
       const summaries: SchoolSummary[] = await Promise.all(
         (schoolsData ?? []).map(async (school: School) => {
-          const { count: enrolled } = await supabase
-            .from('learner_enrollments')
-            .select('id', { count: 'exact', head: true })
-            .eq('school_id', school.id)
-            .eq('status', 'active')
+          // Tertiary students live in `students` (by institution_id); K-12 pupils
+          // live in `learner_enrollments` (by school_id).
+          const isTertiary = school.stages_offered.some(s => ['nd', 'hnd', 'nce', 'degree'].includes(s))
+          const { count: enrolled } = isTertiary
+            ? await supabase
+                .from('students')
+                .select('id', { count: 'exact', head: true })
+                .eq('institution_id', school.id)
+                .eq('status', 'active')
+            : await supabase
+                .from('learner_enrollments')
+                .select('id', { count: 'exact', head: true })
+                .eq('school_id', school.id)
+                .eq('status', 'active')
 
-          const { data: fees } = await supabase
-            .from('fee_records')
-            .select('amount')
-            .eq('school_id', school.id)
-
-          const feeTotal = (fees ?? []).reduce((s: number, r: { amount: number }) => s + r.amount, 0)
+          // Fees live in fee_invoices for both K-12 and tertiary (the legacy
+          // fee_records table is unused/empty). Sum server-side via the RPC so
+          // we're not capped by PostgREST's 1000-row default on large schools.
+          const { data: feeData } = await supabase.rpc('k12_fee_totals', { p_school_id: school.id })
+          const feeTotal = Number((feeData?.[0] as { total_paid?: number | string } | undefined)?.total_paid ?? 0)
 
           return { ...school, enrolledCount: enrolled ?? 0, feeTotal }
         })
