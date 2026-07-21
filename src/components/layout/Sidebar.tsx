@@ -268,11 +268,12 @@ function getStudentActiveKey(pathname: string): string {
 // ── Proprietor + Super admin (flat — few items, no accordion needed) ──────────
 function proprietorModules(schools: { name: string; id: string }[]): NavSection[] {
   const sections: NavSection[] = [
-    { key:'group', heading:'Group View', defaultTo:'/proprietor',
+    { key:'group', heading:'Group View', defaultTo:'/proprietor', alwaysExpanded: true,
       items:[{ label:'Dashboard', to:'/proprietor' },{ label:'Audit Activity', to:'/proprietor/audit' }] },
   ]
   if (schools.length > 0) {
     sections.push({ key:'schools', heading:'Institutions', defaultTo:schools[0] ? `/proprietor/school/${schools[0].id}` : '/proprietor',
+      alwaysExpanded: true,
       items: schools.map(s => ({ label: s.name, to: `/proprietor/school/${s.id}` })) })
   }
   return sections
@@ -280,9 +281,9 @@ function proprietorModules(schools: { name: string; id: string }[]): NavSection[
 
 function superAdminModules(): NavSection[] {
   return [
-    { key:'platform',     heading:'Platform',     defaultTo:'/superadmin',
+    { key:'platform',     heading:'Platform',     defaultTo:'/superadmin', alwaysExpanded: true,
       items:[{ label:'Overview', to:'/superadmin' }] },
-    { key:'institutions', heading:'Institutions', defaultTo:'/superadmin/schools',
+    { key:'institutions', heading:'Institutions', defaultTo:'/superadmin/schools', alwaysExpanded: true,
       items:[{ label:'Schools', to:'/superadmin/schools' },{ label:'Groups', to:'/superadmin/groups' }] },
   ]
 }
