@@ -21,7 +21,7 @@ interface NavSection {
 // ── Office → allowed section keys ────────────────────────────────────────────
 const OFFICE_SECTIONS: Record<string, string[]> = {
   school_admin:       ['overview','coredesk','registry','acadex','senate','schedox','paydesk','operations','hr'],
-  registrar:          ['registry','acadex','boards','operations'],
+  registrar:          ['registry','boards','operations'],
   senate_secretary:   ['senate','acadex'],
   finance_officer:    ['paydesk','boards','operations'],
   bursar:             ['paydesk','boards','operations'],
