@@ -138,6 +138,10 @@ function ProtectedApp() {
 
   if (!appUser) return <Login onSignIn={signIn} />
 
+  // Guardians/parents have no staff membership — they belong in the parent
+  // portal (only their linked child's record), never the staff app + sidebar.
+  if (appUser.memberships.length === 0) return <Navigate to="/portal" replace />
+
   const officeName   = appUser.activeMembership?.office?.name ?? ''
   const isSuperAdmin = officeName === 'super_admin'
   const isProprietor = officeName === 'proprietor'
