@@ -45,8 +45,12 @@ export function StageBadge({ stage }: { stage: string }) {
   )
 }
 
-export function TierBadge({ tier }: { tier: 'pilot' | 'standard' }) {
-  return tier === 'standard'
-    ? <Badge label="Standard — Paid" bg="bg-amber-500" text="text-white" />
-    : <Badge label="Pilot — Free" bg="bg-gray-100" text="text-gray-500" />
+export function TierBadge({ tier }: { tier: 'core' | 'connect' | 'command' }) {
+  const map = {
+    command: { label: 'Command', bg: 'bg-navy-900', text: 'text-white' },
+    connect: { label: 'Connect', bg: 'bg-blue-600', text: 'text-white' },
+    core:    { label: 'Core',    bg: 'bg-gray-100', text: 'text-gray-600' },
+  } as const
+  const t = map[tier] ?? map.core
+  return <Badge label={t.label} bg={t.bg} text={t.text} />
 }

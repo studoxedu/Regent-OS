@@ -13,11 +13,13 @@ export type OfficeType =
   | 'super_admin'
   | 'senate_secretary' | 'registrar' | 'finance_officer' | 'hr_officer'
   | 'timetable_officer' | 'library_officer' | 'admissions_officer'
+  | 'dept_exam_officer' | 'faculty_exam_officer'
   | (string & {})
 
-export type ResultStatus = 'draft' | 'submitted' | 'verified' | 'approved' | 'published'
+export type ResultStatus =
+  | 'draft' | 'submitted' | 'dept_verified' | 'dept_approved' | 'faculty_verified' | 'published'
 export type EnrollmentStatus = 'active' | 'transferred' | 'graduated' | 'withdrawn'
-export type TierType = 'pilot' | 'standard'
+export type TierType = 'core' | 'connect' | 'command'
 
 // ── Database row types ────────────────────────────────────────
 

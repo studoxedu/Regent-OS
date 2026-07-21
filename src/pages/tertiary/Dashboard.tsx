@@ -10,42 +10,48 @@ import type { AppUser, CourseOffering, ResultStatus, OfficeType, AcademicSession
 
 interface Props { appUser: AppUser }
 
-const PIPELINE: ResultStatus[] = ['draft', 'submitted', 'verified', 'approved', 'published']
+const PIPELINE: ResultStatus[] = ['draft', 'submitted', 'dept_verified', 'dept_approved', 'faculty_verified', 'published']
 
 const STAGE_BAR: Record<ResultStatus, string> = {
-  draft:     'bg-gray-300',
-  submitted: 'bg-blue-400',
-  verified:  'bg-cyan-400',
-  approved:  'bg-amber-400',
-  published: 'bg-green-500',
+  draft:            'bg-gray-300',
+  submitted:        'bg-blue-400',
+  dept_verified:    'bg-cyan-400',
+  dept_approved:    'bg-amber-400',
+  faculty_verified: 'bg-violet-400',
+  published:        'bg-green-500',
 }
 
-// Which statuses each office can act on
+// Which statuses each office can act on (hierarchical chain, phase38)
 const ACTIONABLE: Partial<Record<OfficeType, ResultStatus[]>> = {
-  school_admin: ['submitted', 'verified', 'approved'],
-  dean:         ['verified', 'approved'],
-  hod:          ['submitted'],
-  exam_officer: ['submitted'],
-  lecturer:     ['draft'],
+  school_admin:         ['draft', 'submitted', 'dept_verified', 'dept_approved', 'faculty_verified'],
+  lecturer:             ['draft'],
+  dept_exam_officer:    ['submitted'],
+  exam_officer:         ['submitted'],
+  hod:                  ['dept_verified'],
+  faculty_exam_officer: ['dept_approved'],
+  dean:                 ['faculty_verified'],
 }
 
 // Label for the next action button
-function nextActionLabel(status: ResultStatus, office: OfficeType): string {
-  if (status === 'draft'      && office === 'lecturer')     return 'Submit'
-  if (status === 'submitted'  && (office === 'exam_officer' || office === 'school_admin')) return 'Verify'
-  if (status === 'submitted'  && office === 'hod')          return 'Approve'
-  if (status === 'verified'   && (office === 'dean' || office === 'school_admin')) return 'Approve'
-  if (status === 'approved'   && (office === 'dean' || office === 'school_admin')) return 'Publish'
-  return 'Advance'
+function nextActionLabel(status: ResultStatus, _office: OfficeType): string {
+  switch (status) {
+    case 'draft':            return 'Submit'
+    case 'submitted':        return 'Dept Verify'
+    case 'dept_verified':    return 'HOD Approve'
+    case 'dept_approved':    return 'Faculty Verify'
+    case 'faculty_verified': return 'Publish'
+    default:                 return 'Advance'
+  }
 }
 
 // The flow_execute action string for the next step
 const NEXT_ACTION: Record<ResultStatus, string | null> = {
-  draft:     'results.submit',
-  submitted: 'results.verify',
-  verified:  'results.approve',
-  approved:  'results.publish',
-  published: null,
+  draft:            'results.submit',
+  submitted:        'results.dept_verify',
+  dept_verified:    'results.dept_approve',
+  dept_approved:    'results.faculty_verify',
+  faculty_verified: 'results.publish',
+  published:        null,
 }
 
 interface Snapshot {
@@ -75,7 +81,7 @@ export default function TertiaryDashboard({ appUser }: Props) {
   const navigate = useNavigate()
 
   const [pipeline, setPipeline] = useState<Record<ResultStatus, number>>(
-    { draft: 0, submitted: 0, verified: 0, approved: 0, published: 0 }
+    { draft: 0, submitted: 0, dept_verified: 0, dept_approved: 0, faculty_verified: 0, published: 0 }
   )
   const [queue, setQueue] = useState<CourseOffering[]>([])
   const [snapshot, setSnapshot] = useState<Snapshot>({ students: 0, faculties: 0, departments: 0, session: null })
@@ -123,7 +129,7 @@ export default function TertiaryDashboard({ appUser }: Props) {
     }
 
     // Pipeline counts
-    const counts = { draft: 0, submitted: 0, verified: 0, approved: 0, published: 0 } as Record<ResultStatus, number>
+    const counts = { draft: 0, submitted: 0, dept_verified: 0, dept_approved: 0, faculty_verified: 0, published: 0 } as Record<ResultStatus, number>
     offerings.forEach(o => { counts[o.results_status] = (counts[o.results_status] ?? 0) + 1 })
 
     // Action queue: offerings this office can act on
@@ -292,7 +298,7 @@ export default function TertiaryDashboard({ appUser }: Props) {
                         </td>
                         <td className="px-5 py-3 text-right">
                           <Button
-                            variant={o.results_status === 'approved' ? 'amber' : 'secondary'}
+                            variant={o.results_status === 'faculty_verified' ? 'amber' : 'secondary'}
                             size="sm"
                             onClick={() => advance(o)}
                             disabled={acting === o.id}

@@ -22,11 +22,22 @@ export const RESULT_STATUS_STYLES: Record<
   ResultStatus,
   { bg: string; text: string; dot: string }
 > = {
-  draft:     { bg: 'bg-gray-100',  text: 'text-gray-500',   dot: 'bg-gray-400' },
-  submitted: { bg: 'bg-blue-100',  text: 'text-blue-700',   dot: 'bg-blue-500' },
-  verified:  { bg: 'bg-cyan-100',  text: 'text-cyan-700',   dot: 'bg-cyan-500' },
-  approved:  { bg: 'bg-yellow-100',text: 'text-yellow-800', dot: 'bg-yellow-400' },
-  published: { bg: 'bg-green-100', text: 'text-green-700',  dot: 'bg-green-500' },
+  draft:            { bg: 'bg-gray-100',   text: 'text-gray-500',    dot: 'bg-gray-400' },
+  submitted:        { bg: 'bg-blue-100',   text: 'text-blue-700',    dot: 'bg-blue-500' },
+  dept_verified:    { bg: 'bg-cyan-100',   text: 'text-cyan-700',    dot: 'bg-cyan-500' },
+  dept_approved:    { bg: 'bg-yellow-100', text: 'text-yellow-800',  dot: 'bg-yellow-400' },
+  faculty_verified: { bg: 'bg-violet-100', text: 'text-violet-700',  dot: 'bg-violet-500' },
+  published:        { bg: 'bg-green-100',  text: 'text-green-700',   dot: 'bg-green-500' },
+}
+
+// Human-readable labels for the tertiary results pipeline states.
+export const RESULT_STATUS_LABELS: Record<string, string> = {
+  draft:            'Draft',
+  submitted:        'Submitted',
+  dept_verified:    'Dept Verified',
+  dept_approved:    'Dept Approved',
+  faculty_verified: 'Faculty Verified',
+  published:        'Published',
 }
 
 /** Colour config for enrollment status badges. */

@@ -20,12 +20,15 @@ export default function ProprietorSchoolDetail({ appUser: _ }: Props) {
     Promise.all([
       supabase.from('schools').select('*').eq('id', id).single(),
       supabase.from('audit_log').select('*').eq('school_id', id).order('created_at', { ascending: false }).limit(20),
+      // Head-count spans both models: K-12 pupils in learner_enrollments,
+      // tertiary students in students (institution_id).
       supabase.from('learner_enrollments').select('id', { count: 'exact', head: true }).eq('school_id', id).eq('status', 'active'),
+      supabase.from('students').select('id', { count: 'exact', head: true }).eq('institution_id', id).eq('status', 'active'),
       supabase.from('memberships').select('id', { count: 'exact', head: true }).eq('school_id', id).eq('is_active', true),
-    ]).then(([{ data: s }, { data: ev }, { count: enrolled }, { count: staff }]) => {
+    ]).then(([{ data: s }, { data: ev }, { count: enrolledK12 }, { count: enrolledTert }, { count: staff }]) => {
       setSchool(s as School)
       setEvents((ev ?? []) as AuditLogEntry[])
-      setCounts({ enrolled: enrolled ?? 0, staff: staff ?? 0 })
+      setCounts({ enrolled: (enrolledK12 ?? 0) + (enrolledTert ?? 0), staff: staff ?? 0 })
     })
   }, [id])
 

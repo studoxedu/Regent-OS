@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Card, Alert } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Select } from '../../components/ui/Form'
-import { supabase } from '../../lib/supabase'
+import { flowExecute, supabase } from '../../lib/supabase'
 import type { AppUser } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -10,7 +10,7 @@ interface Props { appUser: AppUser }
 // ── Types ────────────────────────────────────────────────────────
 interface Offering {
   id: string
-  results_status: 'draft' | 'submitted' | 'verified' | 'approved' | 'published'
+  results_status: 'draft' | 'submitted' | 'dept_verified' | 'dept_approved' | 'faculty_verified' | 'published'
   course: { id: string; code: string; title: string; credit_units: number }
   semester: { id: string; label: string; session: { label: string } }
   lecturer_assignment?: {
@@ -61,11 +61,12 @@ interface Semester { id: string; label: string; session_id: string; ordinal: num
 type Tab = 'offerings' | 'transcripts' | 'audit'
 
 const STATUS_STYLE: Record<string, string> = {
-  draft:     'bg-gray-100 text-gray-600',
-  submitted: 'bg-yellow-50 text-yellow-700',
-  verified:  'bg-blue-50 text-blue-700',
-  approved:  'bg-purple-50 text-purple-700',
-  published: 'bg-green-50 text-green-700',
+  draft:            'bg-gray-100 text-gray-600',
+  submitted:        'bg-yellow-50 text-yellow-700',
+  dept_verified:    'bg-blue-50 text-blue-700',
+  dept_approved:    'bg-purple-50 text-purple-700',
+  faculty_verified: 'bg-violet-50 text-violet-700',
+  published:        'bg-green-50 text-green-700',
 }
 
 
@@ -241,9 +242,9 @@ export default function Acadex({ appUser }: Props) {
     } else if (isExamOfficer) {
       query = query.eq('results_status', 'submitted')
     } else if (isHOD) {
-      query = query.eq('results_status', 'verified')
+      query = query.eq('results_status', 'dept_verified')
     } else if (isDean) {
-      query = query.eq('results_status', 'approved')
+      query = query.eq('results_status', 'faculty_verified')
     }
 
     const { data } = await query
@@ -356,36 +357,40 @@ export default function Acadex({ appUser }: Props) {
     setLoadingTx(false)
   }
 
-  async function handlePipelineAction(offering: Offering, cap: string) {
-    const { error } = await supabase.rpc('flow_execute', {
-      p_capability: cap,
-      p_payload: { offering_id: offering.id },
-    })
-    if (error) { flash(error.message, false); return }
-    flash(`${cap.split('.')[1]} complete.`)
-    loadOfferings()
+  // Governed via the K-12 flow_execute(action, school_id, payload) overload —
+  // the tertiary office-model overload throws for GSU (no office_instances).
+  async function handlePipelineAction(offering: Offering, action: string) {
+    try {
+      await flowExecute(action, schoolId, { offering_id: offering.id })
+      flash(`${action.split('.').slice(1).join(' ')} complete.`)
+      loadOfferings()
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Action failed', false)
+    }
   }
 
   async function handleSubmitScores() {
     if (!activeOffering) return
-    const regs = activeOffering._registrations ?? []
-    const payload = regs
-      .filter(r => r.student_id)
-      .map(r => ({
-        student_id: r.student_id,
-        ca_score:   scores[r.student_id!]?.ca   || null,
-        exam_score: scores[r.student_id!]?.exam  || null,
-      }))
+    const regs = (activeOffering._registrations ?? []).filter(r => r.student_id)
     setSubmitting(true)
-    const { error } = await supabase.rpc('flow_execute', {
-      p_capability: 'result.submit',
-      p_payload: { offering_id: activeOffering.id, scores: payload },
-    })
-    setSubmitting(false)
-    if (error) { flash(error.message, false); return }
-    flash('Scores submitted.')
-    setActiveOffering(null)
-    loadOfferings()
+    try {
+      // Persist scores while still draft (score-lock allows edits only then),
+      // then submit for departmental verification.
+      for (const r of regs) {
+        const sc = scores[r.student_id!]
+        await supabase.from('course_registrations')
+          .update({ ca_score: sc?.ca ?? null, exam_score: sc?.exam ?? null })
+          .eq('offering_id', activeOffering.id).eq('student_id', r.student_id!)
+      }
+      await flowExecute('results.submit', schoolId, { offering_id: activeOffering.id })
+      flash('Scores submitted.')
+      setActiveOffering(null)
+      loadOfferings()
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Submit failed', false)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   // ── Transcript helpers ─────────────────────────────────────────
@@ -538,32 +543,32 @@ export default function Acadex({ appUser }: Props) {
                                   View
                                 </Button>
                                 <Button variant="ghost" size="sm"
-                                  onClick={() => handlePipelineAction(off, 'result.verify')}>
-                                  Verify
+                                  onClick={() => handlePipelineAction(off, 'results.dept_verify')}>
+                                  Dept Verify
                                 </Button>
                               </>
                             )}
-                            {isHOD && off.results_status === 'verified' && (
+                            {isHOD && off.results_status === 'dept_verified' && (
                               <>
                                 <Button variant="ghost" size="sm"
                                   onClick={() => { setActiveOffering(off); setScores({}) }}>
                                   View
                                 </Button>
                                 <Button variant="ghost" size="sm"
-                                  onClick={() => handlePipelineAction(off, 'result.approve')}>
+                                  onClick={() => handlePipelineAction(off, 'results.dept_approve')}>
                                   Approve
                                 </Button>
                               </>
                             )}
-                            {isDean && off.results_status === 'approved' && (
+                            {isDean && off.results_status === 'faculty_verified' && (
                               <>
                                 <Button variant="ghost" size="sm"
                                   onClick={() => { setActiveOffering(off); setScores({}) }}>
                                   View
                                 </Button>
                                 <Button variant="ghost" size="sm"
-                                  onClick={() => handlePipelineAction(off, 'result.publish')}>
-                                  Approve
+                                  onClick={() => handlePipelineAction(off, 'results.publish')}>
+                                  Publish
                                 </Button>
                               </>
                             )}
@@ -744,7 +749,7 @@ export default function Acadex({ appUser }: Props) {
                   {(() => {
                     const counts: Record<string, number> = {}
                     auditOfferings.forEach(o => { counts[o.results_status] = (counts[o.results_status] ?? 0) + 1 })
-                    const order: Offering['results_status'][] = ['draft','submitted','verified','approved','published']
+                    const order: Offering['results_status'][] = ['draft','submitted','dept_verified','dept_approved','faculty_verified','published']
                     return (
                       <div className="flex gap-2 px-5 py-3 border-b border-gray-100 flex-wrap">
                         {order.map(s => counts[s] != null ? (

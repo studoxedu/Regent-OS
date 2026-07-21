@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Topbar } from '../../components/layout/Topbar'
 import { Card } from '../../components/ui/Card'
-import { supabase } from '../../lib/supabase'
+import { flowExecute, supabase } from '../../lib/supabase'
 import type { AppUser } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -33,19 +33,21 @@ interface Offering {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  draft:     'bg-gray-100 text-gray-500',
-  submitted: 'bg-yellow-50 text-yellow-700',
-  verified:  'bg-blue-50 text-blue-700',
-  approved:  'bg-purple-50 text-purple-700',
-  published: 'bg-green-50 text-green-700',
+  draft:            'bg-gray-100 text-gray-500',
+  submitted:        'bg-yellow-50 text-yellow-700',
+  dept_verified:    'bg-blue-50 text-blue-700',
+  dept_approved:    'bg-purple-50 text-purple-700',
+  faculty_verified: 'bg-violet-50 text-violet-700',
+  published:        'bg-green-50 text-green-700',
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  draft:     'Draft',
-  submitted: 'Submitted',
-  verified:  'Verified',
-  approved:  'Approved',
-  published: 'Published',
+  draft:            'Draft',
+  submitted:        'Submitted',
+  dept_verified:    'Dept Verified',
+  dept_approved:    'Dept Approved',
+  faculty_verified: 'Faculty Verified',
+  published:        'Published',
 }
 
 export default function ScoreReview({ appUser }: Props) {
@@ -161,18 +163,21 @@ export default function ScoreReview({ appUser }: Props) {
 
   useEffect(() => { loadOfferings() }, [loadOfferings])
 
-  async function act(offeringId: string, newStatus: string) {
+  // Governed action — routes through flow_execute, which enforces capability +
+  // department/faculty scope (phase38). Never writes results_status directly.
+  async function act(offeringId: string, action: string) {
     setActing(offeringId)
-    await supabase.from('course_offerings').update({ results_status: newStatus }).eq('id', offeringId)
-    setActing(null)
-    setOfferings(prev => prev.map(o => o.id === offeringId ? { ...o, results_status: newStatus } : o))
+    try {
+      await flowExecute(action, schoolId, { offering_id: offeringId })
+      await loadOfferings()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Action failed')
+    } finally {
+      setActing(null)
+    }
   }
 
-  const filterOptions = isExamOfficer
-    ? ['all', 'draft', 'submitted', 'verified', 'approved', 'published']
-    : isHOD
-    ? ['all', 'verified', 'approved', 'published']
-    : ['all', 'approved', 'published']
+  const filterOptions = ['all', 'draft', 'submitted', 'dept_verified', 'dept_approved', 'faculty_verified', 'published']
 
   const displayed = filter === 'all'
     ? offerings
@@ -272,8 +277,13 @@ export default function ScoreReview({ appUser }: Props) {
               const lecName = [lec?.first_name, lec?.last_name].filter(Boolean).join(' ') || '—'
               const busy    = acting === o.id
 
-              const canExamVerify = isExamOfficer && o.results_status === 'submitted'
-              const canHODApprove = isHOD         && o.results_status === 'verified'
+              // An exam officer verifies at their level: dept officers at 'submitted',
+              // faculty officers at 'dept_approved'. flow_execute enforces the exact scope.
+              const verifyAction = o.results_status === 'submitted' ? 'results.dept_verify'
+                : o.results_status === 'dept_approved' ? 'results.faculty_verify' : null
+              // Reject only at the level this exam officer verifies (flow_execute
+              // enforces the exact office/scope anyway).
+              const canReject = verifyAction !== null
 
               return (
                 <div key={o.id} className="bg-white border border-gray-200 rounded-lg px-5 py-4">
@@ -300,32 +310,18 @@ export default function ScoreReview({ appUser }: Props) {
                         {STATUS_LABEL[o.results_status] ?? o.results_status}
                       </span>
 
-                      {/* Exam officer: verify or reject back to lecturer */}
-                      {canExamVerify && (
-                        <>
-                          <button onClick={() => act(o.id, 'verified')} disabled={!!acting}
-                            className="text-[11px] font-semibold px-3 py-1 rounded border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 cursor-pointer transition-colors">
-                            {busy ? '…' : 'Verify'}
-                          </button>
-                          <button onClick={() => act(o.id, 'draft')} disabled={!!acting}
-                            className="text-[11px] font-semibold px-3 py-1 rounded border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 cursor-pointer transition-colors">
-                            {busy ? '…' : 'Reject'}
-                          </button>
-                        </>
+                      {/* Exam officer: verify at their level, or reject one step back */}
+                      {verifyAction && (
+                        <button onClick={() => act(o.id, verifyAction)} disabled={!!acting}
+                          className="text-[11px] font-semibold px-3 py-1 rounded border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 cursor-pointer transition-colors">
+                          {busy ? '…' : 'Verify'}
+                        </button>
                       )}
-
-                      {/* HOD: approve or send back to exam officer */}
-                      {canHODApprove && (
-                        <>
-                          <button onClick={() => act(o.id, 'approved')} disabled={!!acting}
-                            className="text-[11px] font-semibold px-3 py-1 rounded border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50 cursor-pointer transition-colors">
-                            {busy ? '…' : 'Approve'}
-                          </button>
-                          <button onClick={() => act(o.id, 'submitted')} disabled={!!acting}
-                            className="text-[11px] font-semibold px-3 py-1 rounded border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-50 cursor-pointer transition-colors">
-                            {busy ? '…' : 'Send Back ↩'}
-                          </button>
-                        </>
+                      {canReject && (
+                        <button onClick={() => act(o.id, 'results.reject')} disabled={!!acting}
+                          className="text-[11px] font-semibold px-3 py-1 rounded border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 cursor-pointer transition-colors">
+                          {busy ? '…' : 'Reject'}
+                        </button>
                       )}
                     </div>
                   </div>

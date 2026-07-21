@@ -67,7 +67,7 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
   const [showCreate, setShowCreate] = useState(false)
   const [newName,    setNewName]    = useState('')
   const [newPreset,  setNewPreset]  = useState(0)
-  const [newTier,    setNewTier]    = useState<'pilot' | 'standard'>('pilot')
+  const [newTier,    setNewTier]    = useState<'core' | 'connect' | 'command'>('core')
   const [newGroup,   setNewGroup]   = useState('')
   const [saving,     setSaving]     = useState(false)
 
@@ -104,6 +104,17 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
       .from('schools').update({ is_active: !school.is_active }).eq('id', school.id)
     if (error) { flash(error.message, false); return }
     flash(`${school.name} ${school.is_active ? 'deactivated' : 'activated'}.`)
+    load()
+  }
+
+  // Platform-admin tier control. tier_id is locked to super_admin at the DB
+  // layer (phase35 trigger), so schools cannot self-upgrade — this is the only
+  // sanctioned way to change a school's plan.
+  async function changeTier(school: SchoolRow, tier: string) {
+    if (tier === school.tier_id) return
+    const { error } = await supabase.from('schools').update({ tier_id: tier }).eq('id', school.id)
+    if (error) { flash(error.message, false); return }
+    flash(`${school.name} set to ${tier.charAt(0).toUpperCase() + tier.slice(1)}.`)
     load()
   }
 
@@ -251,11 +262,20 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
                   </td>
                   <td className="px-5 py-3 text-gray-500">{typeLabel(s)}</td>
                   <td className="px-5 py-3">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                      s.tier_id === 'pilot' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'
-                    }`}>
-                      {s.tier_id}
-                    </span>
+                    <select
+                      value={s.tier_id}
+                      onChange={e => changeTier(s, e.target.value)}
+                      title="Change subscription tier"
+                      className={`text-[10px] font-bold px-1.5 py-1 rounded uppercase border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-navy-300 ${
+                        s.tier_id === 'command' ? 'bg-navy-50 text-navy-700'
+                          : s.tier_id === 'connect' ? 'bg-blue-50 text-blue-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      <option value="core">CORE</option>
+                      <option value="connect">CONNECT</option>
+                      <option value="command">COMMAND</option>
+                    </select>
                   </td>
                   <td className="px-5 py-3 text-gray-400 text-[12px]">
                     {s.group_name ?? <span className="text-gray-300">—</span>}
@@ -323,10 +343,11 @@ export default function SuperAdminSchools({ appUser: _ }: { appUser: AppUser }) 
                 <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
                   Tier
                 </label>
-                <select value={newTier} onChange={e => setNewTier(e.target.value as 'pilot' | 'standard')}
+                <select value={newTier} onChange={e => setNewTier(e.target.value as 'core' | 'connect' | 'command')}
                   className="w-full border border-gray-200 rounded px-3 py-2 text-[13px] bg-white focus:outline-none focus:ring-1 focus:ring-navy-300">
-                  <option value="pilot">Pilot</option>
-                  <option value="standard">Standard</option>
+                  <option value="core">Core</option>
+                  <option value="connect">Connect</option>
+                  <option value="command">Command</option>
                 </select>
               </div>
               <div>

@@ -394,7 +394,9 @@ export default function LecturerCourseScores({ appUser }: Props) {
 
   const dirtyCount  = rows.filter(r => r.dirty).length
   const filledCount = rows.filter(r => r.ca_score !== null && r.exam_score !== null).length
-  const isLocked    = ['approved', 'published'].includes(offering?.results_status ?? '')
+  // Scores are editable only while the offering is a draft (phase38 score-lock);
+  // once submitted for verification everything downstream is read-only.
+  const isLocked    = (offering?.results_status ?? 'draft') !== 'draft'
   const canSubmit   = offering?.results_status === 'draft' && filledCount === rows.length && rows.length > 0
 
   if (loading) return (

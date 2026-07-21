@@ -127,7 +127,7 @@ export default function ProprietorDashboard({ appUser }: Props) {
                     { label: 'Enrolled learners', value: school.enrolledCount.toLocaleString() },
                     { label: 'Fees collected',     value: formatNaira(school.feeTotal) },
                     { label: 'Governance mode',    value: school.stages_offered.some(s => ['nd','hnd','nce','degree'].includes(s)) ? 'Tertiary' : 'K12' },
-                    { label: 'Tier',               value: school.tier_id === 'standard' ? 'Standard' : 'Pilot' },
+                    { label: 'Tier',               value: school.tier_id.charAt(0).toUpperCase() + school.tier_id.slice(1) },
                   ].map(row => (
                     <div key={row.label} className="px-4 py-2.5 flex justify-between text-sm">
                       <span className="text-gray-500">{row.label}</span>

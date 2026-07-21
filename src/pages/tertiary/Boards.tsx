@@ -64,11 +64,12 @@ const SUB_STATUS_STYLE: Record<string, string> = {
 }
 
 const RESULT_STATUS_STYLE: Record<string, string> = {
-  draft:     'bg-gray-100 text-gray-500',
-  submitted: 'bg-yellow-50 text-yellow-700',
-  verified:  'bg-blue-50 text-blue-700',
-  approved:  'bg-purple-50 text-purple-700',
-  published: 'bg-green-50 text-green-700',
+  draft:            'bg-gray-100 text-gray-500',
+  submitted:        'bg-yellow-50 text-yellow-700',
+  dept_verified:    'bg-blue-50 text-blue-700',
+  dept_approved:    'bg-purple-50 text-purple-700',
+  faculty_verified: 'bg-violet-50 text-violet-700',
+  published:        'bg-green-50 text-green-700',
 }
 type StatusFilter = 'all' | 'open' | 'in_progress' | 'done'
 
