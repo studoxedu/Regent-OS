@@ -11,16 +11,21 @@ export default {
         sans: ['"Inter"', 'system-ui', 'sans-serif'],
       },
       colors: {
-        // Slate scale (was navy)
+        // Slate scale (was navy) — full scale so no step is undefined
+        // (undefined steps generate no class → elements inherit dark text and
+        //  go invisible on dark backgrounds).
         navy: {
           950: '#020617',
           900: '#0f172a',
           800: '#1e293b',
           700: '#334155',
           600: '#475569',
+          500: '#64748b',
           400: '#94a3b8',
-          200: '#cbd5e1',
+          300: '#cbd5e1',
+          200: '#e2e8f0',
           100: '#f1f5f9',
+          50:  '#f8fafc',
         },
         // Electric blue accent scale (was amber) — full scale defined so
         // no default-amber orange leaks through on undefined steps.
