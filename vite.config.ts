@@ -3,8 +3,10 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  // Relative asset paths so the build works under Electron's file:// protocol
-  base: './',
+  // Absolute base for the web build so hashed assets resolve correctly at ANY
+  // route depth (e.g. /superadmin/schools) behind the SPA rewrite. Electron's
+  // file:// build overrides this with `vite build --base ./` (npm run build:electron).
+  base: '/',
   plugins: [
     react(),
     VitePWA({
