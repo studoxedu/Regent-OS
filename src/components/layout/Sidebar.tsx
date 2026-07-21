@@ -25,7 +25,9 @@ const OFFICE_SECTIONS: Record<string, string[]> = {
   senate_secretary:   ['senate','acadex'],
   finance_officer:    ['paydesk','boards','operations'],
   bursar:             ['paydesk','boards','operations'],
-  hod:                  ['acadex','boards'],
+  // HOD = department-scoped VC: sees everything the VC sees (score ENTRY is still
+  // withheld — no course.scores.enter cap), acting only on their own department.
+  hod:                  ['overview','coredesk','registry','acadex','senate','schedox','paydesk','operations','hr','boards'],
   dean:                 ['acadex','boards'],
   exam_officer:         ['acadex','boards'],
   dept_exam_officer:    ['acadex','boards'],
