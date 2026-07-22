@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { hasCap } from '../../lib/roles'
 import type { AppUser } from '../../types'
 
 interface Venue {
@@ -60,6 +61,7 @@ function overlaps(s1: string, e1: string, s2: string, e2: string) {
 }
 
 export default function Schedox({ appUser }: { appUser: AppUser }) {
+  const canManage = hasCap(appUser, 'structure.manage') || hasCap(appUser, 'timetable.manage')
   const schoolId = appUser.activeSchool?.id
   const [tab, setTab] = useState<'timetable' | 'exams' | 'venues'>('timetable')
   const [semesters, setSemesters] = useState<Semester[]>([])
@@ -315,11 +317,13 @@ export default function Schedox({ appUser }: { appUser: AppUser }) {
               ))}
             </select>
           </div>
-          <button onClick={tab === 'timetable' ? openTt : openEx}
-            disabled={!semesterId || offerings.length === 0}
-            className="px-3 py-1.5 bg-amber-500 text-white text-[13px] font-semibold rounded cursor-pointer hover:bg-amber-600 disabled:opacity-50">
-            {tab === 'timetable' ? '+ Add Class' : '+ Add Exam'}
-          </button>
+          {canManage && (
+            <button onClick={tab === 'timetable' ? openTt : openEx}
+              disabled={!semesterId || offerings.length === 0}
+              className="px-3 py-1.5 bg-amber-500 text-white text-[13px] font-semibold rounded cursor-pointer hover:bg-amber-600 disabled:opacity-50">
+              {tab === 'timetable' ? '+ Add Class' : '+ Add Exam'}
+            </button>
+          )}
         </div>
       )}
 
@@ -410,10 +414,12 @@ export default function Schedox({ appUser }: { appUser: AppUser }) {
       {tab === 'venues' && (
         <div>
           <div className="flex justify-end mb-4">
+            {canManage && (
             <button onClick={() => setVenueModal(true)}
               className="px-3 py-1.5 bg-amber-500 text-white text-[13px] font-semibold rounded cursor-pointer hover:bg-amber-600">
               + Add Venue
             </button>
+            )}
           </div>
           <table className="w-full text-[13px]">
             <thead>

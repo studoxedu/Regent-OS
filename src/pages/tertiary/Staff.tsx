@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { Field, Input, Select } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
 import { formatDate } from '../../lib/utils'
+import { hasCap } from '../../lib/roles'
 import type { AppUser, Membership } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -198,7 +199,7 @@ export default function TertiaryStaff({ appUser }: Props) {
       <Topbar
         title="Staff"
         meta="Active members with school access"
-        actions={<Button variant="primary" size="sm" onClick={() => { setShowAdd(true); setAddError('') }}>+ Add Staff</Button>}
+        actions={hasCap(appUser, 'staff.manage') ? <Button variant="primary" size="sm" onClick={() => { setShowAdd(true); setAddError('') }}>+ Add Staff</Button> : undefined}
       />
 
       <div className="p-8 space-y-6">

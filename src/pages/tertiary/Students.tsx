@@ -3,6 +3,7 @@ import { Card, Alert } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input, Field, Select } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
+import { hasCap } from '../../lib/roles'
 import type { AppUser, TertStudent, TertCreateResult, Department, AcademicSession } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -254,9 +255,11 @@ export default function TertiaryStudents({ appUser }: Props) {
           <div className="text-xl font-bold text-navy-900">Student Registry</div>
           <div className="text-sm text-gray-400 mt-0.5">{students.length} students enrolled</div>
         </div>
-        <Button variant="primary" size="sm" onClick={() => { setShowModal(true); setCreateError('') }}>
-          + Admit Student
-        </Button>
+        {hasCap(appUser, 'student.admit') && (
+          <Button variant="primary" size="sm" onClick={() => { setShowModal(true); setCreateError('') }}>
+            + Admit Student
+          </Button>
+        )}
       </div>
 
       {/* Credentials banner */}
@@ -288,7 +291,7 @@ export default function TertiaryStudents({ appUser }: Props) {
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200">
-        {(['registry', 'bulk'] as Tab[]).map(t => (
+        {((hasCap(appUser, 'student.admit') ? ['registry', 'bulk'] : ['registry']) as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-5 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer ${
               tab === t ? 'border-navy-900 text-navy-900' : 'border-transparent text-gray-400 hover:text-gray-600'

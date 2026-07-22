@@ -7,6 +7,7 @@ import { Modal, ConfirmModal } from '../../components/ui/Modal'
 import { Field, Input } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
 import { formatDate } from '../../lib/utils'
+import { hasCap } from '../../lib/roles'
 import type { AppUser, AcademicSession, Semester } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -105,7 +106,7 @@ export default function TertiarySessions({ appUser }: Props) {
       <Topbar
         title="Academic Sessions"
         meta="Session and semester management"
-        actions={<Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>+ New Session</Button>}
+        actions={hasCap(appUser, 'session.create') ? <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>+ New Session</Button> : undefined}
       />
 
       <div className="p-8 max-w-2xl space-y-4">

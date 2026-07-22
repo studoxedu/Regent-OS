@@ -257,6 +257,8 @@ export interface AppUser {
   activeGroup: SchoolGroup | null
   proprietorSchools?: School[]
   lecturerOfferings?: LecturerOffering[]
+  /** Capability actions the active office holds — drives write-control visibility. */
+  capabilities?: string[]
 }
 
 export type FlowExecuteResult = {

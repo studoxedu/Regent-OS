@@ -117,3 +117,8 @@ export function canAssignRoles(officeName: string): boolean {
 export function canManageSalary(officeName: string): boolean {
   return officeName === 'head_teacher' || officeName === 'bursar'
 }
+
+// Client-side capability check — drives write-control visibility so a role only
+// sees buttons for actions it can actually perform (the DB still enforces it).
+export const hasCap = (appUser: { capabilities?: string[] }, action: string): boolean =>
+  !!appUser.capabilities?.includes(action)

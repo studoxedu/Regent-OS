@@ -3,6 +3,7 @@ import { Topbar } from '../../components/layout/Topbar'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { supabase } from '../../lib/supabase'
+import { hasCap } from '../../lib/roles'
 import type { AppUser, GradeScale } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -47,7 +48,7 @@ export default function TertiaryGradeScales({ appUser }: Props) {
       <Topbar
         title="Grade Scales"
         meta="Score-to-grade mapping"
-        actions={
+        actions={hasCap(appUser, 'structure.manage') ? (
           <div className="flex gap-2">
             {scales.length === 0 && (
               <Button variant="ghost" size="sm" onClick={seedDefaults} disabled={seeding}>
@@ -56,7 +57,7 @@ export default function TertiaryGradeScales({ appUser }: Props) {
             )}
             <Button variant="primary" size="sm">+ Add Grade</Button>
           </div>
-        }
+        ) : undefined}
       />
 
       <div className="p-8 max-w-xl">

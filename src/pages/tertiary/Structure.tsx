@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { Input, Field } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
 import { getInstitutionLabels } from '../../lib/institution'
+import { hasCap } from '../../lib/roles'
 import type { AppUser, Faculty, Department, Course } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -117,7 +118,7 @@ export default function TertiaryStructure({ appUser }: Props) {
       <Topbar
         title="Institution Structure"
         meta={`${labels.units}, departments & courses`}
-        actions={<Button variant="primary" size="sm" onClick={() => setShowFacForm(v => !v)}>+ Add {labels.unit}</Button>}
+        actions={hasCap(appUser, 'structure.manage') ? <Button variant="primary" size="sm" onClick={() => setShowFacForm(v => !v)}>+ Add {labels.unit}</Button> : undefined}
       />
 
       <div className="p-8 space-y-4 max-w-3xl">
@@ -250,14 +251,14 @@ export default function TertiaryStructure({ appUser }: Props) {
                                   <Button variant="ghost" size="sm" onClick={() => setAddCourseFor(null)}>×</Button>
                                 </div>
                               </div>
-                            ) : (
+                            ) : hasCap(appUser, 'structure.manage') ? (
                               <button
                                 onClick={() => { setAddCourseFor(dept.id); setCourseForm({ code: '', title: '', credit_units: '3' }) }}
                                 className="text-xs font-semibold text-navy-700 hover:underline mt-2 block"
                               >
                                 + Add Course
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         )}
                       </div>
@@ -265,6 +266,7 @@ export default function TertiaryStructure({ appUser }: Props) {
                   })}
 
                   {/* Add department */}
+                  {hasCap(appUser, 'structure.manage') && (
                   <div className="px-5 py-3 border-t border-gray-100">
                     {addDeptFor === fac.id ? (
                       <div className="flex items-end gap-2">
@@ -291,6 +293,7 @@ export default function TertiaryStructure({ appUser }: Props) {
                       </Button>
                     )}
                   </div>
+                  )}
                 </div>
               )}
             </Card>

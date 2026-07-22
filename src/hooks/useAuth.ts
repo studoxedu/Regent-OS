@@ -126,6 +126,16 @@ export function useAuth() {
         proprietorSchools = (pSchools ?? []) as School[]
       }
 
+      // Capabilities held by the active office — drives write-control visibility.
+      // (capabilities is a global reference table, readable by any authenticated user.)
+      let capabilities: string[] = []
+      const officeId = activeMembership?.office_id
+      if (officeId && /^[0-9a-f-]{36}$/i.test(officeId)) {
+        const { data: caps } = await supabase
+          .from('capabilities').select('action').eq('office_id', officeId)
+        capabilities = (caps ?? []).map((c: { action: string }) => c.action)
+      }
+
       // Lecturer: load assigned course offerings for the sidebar
       if (activeMembership?.office?.name === 'lecturer' && activeMembership.id) {
         const { data: offs } = await supabase
@@ -145,6 +155,7 @@ export function useAuth() {
           activeGroup,
           proprietorSchools,
           lecturerOfferings,
+          capabilities,
         })
         setLoading(false)
       }
