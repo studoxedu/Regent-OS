@@ -25,10 +25,12 @@ const OFFICE_SECTIONS: Record<string, string[]> = {
   senate_secretary:   ['senate','acadex'],
   finance_officer:    ['paydesk','boards','operations'],
   bursar:             ['paydesk','boards','operations'],
-  // HOD = department-scoped VC: sees everything the VC sees (score ENTRY is still
-  // withheld — no course.scores.enter cap), acting only on their own department.
-  hod:                  ['overview','coredesk','registry','acadex','senate','schedox','paydesk','operations','hr','boards'],
-  dean:                 ['acadex','boards'],
+  // HOD (department) / Dean (faculty) — scoped oversight. They VIEW these
+  // sections (no write capabilities beyond results approval + communication);
+  // data is hard-scoped to their department/faculty at the DB layer (phase39).
+  // Institution-level sections (senate, hr, paydesk) are intentionally excluded.
+  hod:                  ['overview','coredesk','registry','acadex','schedox','operations','boards'],
+  dean:                 ['overview','coredesk','registry','acadex','schedox','operations','boards'],
   exam_officer:         ['acadex','boards'],
   dept_exam_officer:    ['acadex','boards'],
   faculty_exam_officer: ['acadex','boards'],
