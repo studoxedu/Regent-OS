@@ -4,14 +4,14 @@ import { Card, CardHeader, Alert } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
-import type { AppUser, K12Class, K12Subject, Stage } from '../../types'
+import { schoolStages, sortClassesByProgression, stageLabel } from '../../lib/utils'
+import type { AppUser, K12Class, K12Subject } from '../../types'
 
 interface Props { appUser: AppUser }
 
 /** Sentinel for the "final year" option in the Promotes-to picker. */
 const GRAD = '__graduates__'
 
-const STAGES: Stage[] = ['nursery','primary','jss','sss']
 
 export default function K12Classes({ appUser }: Props) {
   const schoolId = appUser.activeSchool?.id!
@@ -23,7 +23,7 @@ export default function K12Classes({ appUser }: Props) {
 
   // Class form
   const [className, setClassName] = useState('')
-  const [classStage, setClassStage] = useState<string>('primary')
+  const [classStage, setClassStage] = useState<string>('')
   const [savingClass, setSavingClass] = useState(false)
 
   // Subject form
@@ -51,7 +51,7 @@ export default function K12Classes({ appUser }: Props) {
     if (!className.trim()) return
     setSavingClass(true)
     const { error } = await supabase.from('k12_classes').insert({
-      school_id: schoolId, name: className.trim(), stage: classStage,
+      school_id: schoolId, name: className.trim(), stage: classStage || schoolStages(classes)[0],
     })
     setSavingClass(false)
     if (error) { flash(error.message, 'error'); return }
@@ -91,8 +91,10 @@ export default function K12Classes({ appUser }: Props) {
     flash('Subject removed.'); load()
   }
 
+  const STAGES = schoolStages(classes)
+  const orderedClasses = sortClassesByProgression(classes)
   const classesByStage = STAGES.reduce((acc, stage) => {
-    acc[stage] = classes.filter(c => c.stage === stage)
+    acc[stage] = orderedClasses.filter(c => c.stage === stage)
     return acc
   }, {} as Record<string, K12Class[]>)
 
@@ -134,8 +136,8 @@ export default function K12Classes({ appUser }: Props) {
                 </div>
                 <div className="w-40">
                   <label className="label mb-1.5 block">Stage</label>
-                  <Select value={classStage} onChange={e => setClassStage(e.target.value)}
-                    options={STAGES.map(s => ({ value: s, label: s.toUpperCase() }))} />
+                  <Select value={classStage || STAGES[0]} onChange={e => setClassStage(e.target.value)}
+                    options={STAGES.map(s => ({ value: s, label: stageLabel(s) }))} />
                 </div>
                 <div className="flex items-end">
                   <Button variant="primary" size="sm" onClick={addClass} disabled={savingClass}>
@@ -155,7 +157,7 @@ export default function K12Classes({ appUser }: Props) {
             {STAGES.map(stage => (
               classesByStage[stage].length > 0 && (
                 <div key={stage}>
-                  <div className="label mb-3">{stage.toUpperCase()}</div>
+                  <div className="label mb-3">{stageLabel(stage)}</div>
                   <div className="grid grid-cols-3 gap-3">
                     {classesByStage[stage].map(cls => (
                       <Card key={cls.id} className="px-4 py-3">
@@ -199,7 +201,7 @@ export default function K12Classes({ appUser }: Props) {
                 <div className="w-40">
                   <label className="label mb-1.5 block">Stage (optional)</label>
                   <Select value={subjectStage} onChange={e => setSubjectStage(e.target.value)}
-                    options={[{ value: '', label: 'All stages' }, ...STAGES.map(s => ({ value: s, label: s.toUpperCase() }))]} />
+                    options={[{ value: '', label: 'All stages' }, ...STAGES.map(s => ({ value: s, label: stageLabel(s) }))]} />
                 </div>
                 <div className="flex items-end">
                   <Button variant="primary" size="sm" onClick={addSubject} disabled={savingSubject}>
@@ -223,7 +225,7 @@ export default function K12Classes({ appUser }: Props) {
                   {subjects.map(sub => (
                     <tr key={sub.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                       <td className="px-5 py-3 text-sm font-semibold text-navy-900">{sub.name}</td>
-                      <td className="px-5 py-3 text-sm text-gray-500">{sub.stage ? sub.stage.toUpperCase() : 'All stages'}</td>
+                      <td className="px-5 py-3 text-sm text-gray-500">{sub.stage ? stageLabel(sub.stage) : 'All stages'}</td>
                       <td className="px-5 py-3 text-right">
                         <button onClick={() => deleteSubject(sub.id)} className="text-gray-300 hover:text-red-500 text-xs cursor-pointer">Remove</button>
                       </td>
