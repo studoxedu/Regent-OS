@@ -130,6 +130,33 @@ export function computeGrade(total: number): { grade: string; point: number } {
   return { grade: 'F', point: 0.0 }
 }
 
+export interface GradeBand {
+  min_score: number
+  max_score: number
+  grade: string
+  grade_point: number
+  description?: string | null
+}
+
+const DEFAULT_REMARKS: Record<string, string> = {
+  A: 'Excellent', B: 'Very Good', C: 'Good', D: 'Credit', E: 'Pass', F: 'Fail',
+}
+
+/** Grade a score with the school's own grading scale (grade_scales).
+ *  Returns null when the school has no scale, so callers keep their default. */
+export function gradeFromBands(
+  total: number, bands: GradeBand[],
+): { grade: string; point: number; remark: string } | null {
+  if (!bands.length) return null
+  const sorted = [...bands].sort((a, b) => b.min_score - a.min_score)
+  const band = sorted.find(b => total >= b.min_score) ?? sorted[sorted.length - 1]
+  return {
+    grade: band.grade,
+    point: Number(band.grade_point),
+    remark: band.description || DEFAULT_REMARKS[band.grade] || '',
+  }
+}
+
 export function cn(...classes: (string | undefined | false | null)[]): string {
   return classes.filter(Boolean).join(' ')
 }
