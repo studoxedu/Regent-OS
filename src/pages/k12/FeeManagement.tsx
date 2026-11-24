@@ -5,12 +5,11 @@ import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
 import { notify } from '../../lib/notifications'
-import { cn } from '../../lib/utils'
-import type { AppUser, FeeCategory, FeeStructure, FeeInvoice, K12Term, InvoiceStatus, Stage } from '../../types'
+import { cn, schoolStages, stageLabel, STANDARD_K12_STAGES } from '../../lib/utils'
+import type { AppUser, FeeCategory, FeeStructure, FeeInvoice, K12Term, InvoiceStatus } from '../../types'
 
 interface Props { appUser: AppUser }
 
-const STAGES: Stage[] = ['nursery','primary','jss','sss']
 const INV_PAGE_SIZE = 25
 
 const STATUS_STYLE: Record<InvoiceStatus, string> = {
@@ -54,6 +53,17 @@ export default function FeeManagement({ appUser }: Props) {
   const [strCat, setStrCat]     = useState('')
   const [strTerm, setStrTerm]   = useState('')
   const [strStage, setStrStage] = useState('')
+  const [STAGES, setStages]     = useState<string[]>(STANDARD_K12_STAGES)
+
+  // Stages come from the school's own classes (supports Islamiyya Raudah/Fasl etc.)
+  useEffect(() => {
+    supabase.from('k12_classes').select('id, name, stage, next_class_id').eq('school_id', schoolId)
+      .then(({ data }) => {
+        const offered = (appUser.activeSchool?.stages_offered ?? []) as string[]
+        const st = schoolStages(data ?? [])
+        setStages(st.filter(s => !STANDARD_K12_STAGES.includes(s) || offered.length === 0 || offered.includes(s)))
+      })
+  }, [schoolId]) // eslint-disable-line react-hooks/exhaustive-deps
   const [strAmount, setStrAmount] = useState('')
   const [strDue, setStrDue]     = useState('')
   const [savingStr, setSavingStr] = useState(false)
@@ -176,7 +186,7 @@ export default function FeeManagement({ appUser }: Props) {
       school_id: schoolId,
       enrollment_id: en.id,
       fee_structure_id: structureId,
-      description: `${structure.category?.name ?? 'Fee'}${structure.stage ? ' — ' + structure.stage.toUpperCase() : ''}`,
+      description: `${structure.category?.name ?? 'Fee'}${structure.stage ? ' — ' + stageLabel(structure.stage) : ''}`,
       amount_due: structure.amount,
       due_date: structure.due_date,
     }))
@@ -358,7 +368,7 @@ export default function FeeManagement({ appUser }: Props) {
                     <div>
                       <label className="label mb-1 block">Stage (optional)</label>
                       <Select value={strStage} onChange={e => setStrStage(e.target.value)}
-                        options={[{value:'',label:'All stages'}, ...STAGES.map(s => ({value:s,label:s.toUpperCase()}))]} />
+                        options={[{value:'',label:'All stages'}, ...STAGES.map(s => ({value:s,label:stageLabel(s)}))]} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -394,7 +404,7 @@ export default function FeeManagement({ appUser }: Props) {
                     <tr key={str.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                       <td className="px-5 py-3 text-sm font-semibold text-navy-900">{str.category?.name}</td>
                       <td className="px-5 py-3 text-sm text-gray-600">{str.term?.label ?? 'All terms'}</td>
-                      <td className="px-5 py-3 text-sm text-gray-600">{str.stage ? str.stage.toUpperCase() : 'All stages'}</td>
+                      <td className="px-5 py-3 text-sm text-gray-600">{str.stage ? stageLabel(str.stage) : 'All stages'}</td>
                       <td className="px-5 py-3 text-sm font-semibold text-navy-900">₦{str.amount.toLocaleString()}</td>
                       <td className="px-5 py-3 text-sm text-gray-500">{str.due_date ?? '—'}</td>
                       <td className="px-5 py-3 text-right">
