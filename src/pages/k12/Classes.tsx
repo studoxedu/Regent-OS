@@ -5,7 +5,8 @@ import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
 import { schoolStages, sortClassesByProgression, stageLabel } from '../../lib/utils'
-import type { AppUser, K12Class, K12Subject } from '../../types'
+import { hasCap } from '../../lib/roles'
+import type { AppUser, GradeScale, K12Class, K12Subject } from '../../types'
 
 interface Props { appUser: AppUser }
 
@@ -18,7 +19,7 @@ export default function K12Classes({ appUser }: Props) {
   const [classes, setClasses]   = useState<K12Class[]>([])
   const [subjects, setSubjects] = useState<K12Subject[]>([])
   const [loading, setLoading]   = useState(true)
-  const [tab, setTab]           = useState<'classes' | 'subjects'>('classes')
+  const [tab, setTab]           = useState<'classes' | 'subjects' | 'grading'>('classes')
   const [toast, setToast]       = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
   // Class form
@@ -106,7 +107,7 @@ export default function K12Classes({ appUser }: Props) {
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-gray-200">
-          {(['classes','subjects'] as const).map(t => (
+          {(['classes','subjects','grading'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -123,6 +124,8 @@ export default function K12Classes({ appUser }: Props) {
 
         {loading ? (
           <div className="text-sm text-gray-400 text-center py-12">Loading…</div>
+        ) : tab === 'grading' ? (
+          <GradingTab schoolId={schoolId} canEdit={hasCap(appUser, 'school.manage')} flash={flash} />
         ) : tab === 'classes' ? (
           <div className="space-y-6">
             {/* Add class form */}
@@ -241,5 +244,122 @@ export default function K12Classes({ appUser }: Props) {
         )}
       </div>
     </>
+  )
+}
+
+// ── Grading scale (score → grade) for this school ───────────────────────────
+// Used by Results and Report Cards. Editable by the school head (school.manage).
+type BandRow = { id?: string; grade: string; min_score: string; max_score: string; grade_point: string; description: string }
+
+function GradingTab({ schoolId, canEdit, flash }: {
+  schoolId: string; canEdit: boolean; flash: (msg: string, type?: 'success' | 'error') => void
+}) {
+  const [rows, setRows]       = useState<BandRow[]>([])
+  const [origIds, setOrigIds] = useState<string[]>([])
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState<string | null>(null)
+
+  async function load() {
+    const { data } = await supabase.from('grade_scales').select('*')
+      .eq('school_id', schoolId).order('min_score', { ascending: false })
+    const list = (data ?? []) as GradeScale[]
+    setOrigIds(list.map(b => b.id))
+    setRows(list.map(b => ({
+      id: b.id, grade: b.grade, min_score: String(b.min_score), max_score: String(b.max_score),
+      grade_point: String(b.grade_point), description: b.description ?? '',
+    })))
+  }
+  useEffect(() => { if (schoolId) load() }, [schoolId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function update(i: number, field: keyof BandRow, value: string) {
+    setRows(prev => prev.map((r, j) => j === i ? { ...r, [field]: value } : r))
+  }
+
+  function validate(): string | null {
+    if (rows.length === 0) return 'Add at least one grade.'
+    const parsed = rows.map(r => ({ g: r.grade.trim(), min: Number(r.min_score), max: Number(r.max_score), pt: Number(r.grade_point) }))
+    for (const b of parsed) {
+      if (!b.g) return 'Every row needs a grade letter.'
+      if ([b.min, b.max, b.pt].some(n => Number.isNaN(n))) return `Grade ${b.g}: scores and grade point must be numbers.`
+      if (b.min < 0 || b.max > 100 || b.min > b.max) return `Grade ${b.g}: range must be within 0–100, lowest first.`
+    }
+    const sorted = [...parsed].sort((a, b) => a.min - b.min)
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].min <= sorted[i - 1].max) return `Grades ${sorted[i - 1].g} and ${sorted[i].g} overlap.`
+    }
+    return null
+  }
+
+  async function save() {
+    const err = validate()
+    setError(err)
+    if (err) return
+    setSaving(true)
+    try {
+      const keep = rows.filter(r => r.id).map(r => r.id as string)
+      const removed = origIds.filter(id => !keep.includes(id))
+      if (removed.length) {
+        const { error } = await supabase.from('grade_scales').delete().in('id', removed)
+        if (error) throw error
+      }
+      for (const r of rows) {
+        const rec = {
+          school_id: schoolId, grade: r.grade.trim(), min_score: Number(r.min_score), max_score: Number(r.max_score),
+          grade_point: Number(r.grade_point), description: r.description.trim() || null,
+        }
+        const { error } = r.id
+          ? await supabase.from('grade_scales').update(rec).eq('id', r.id)
+          : await supabase.from('grade_scales').insert(rec)
+        if (error) throw error
+      }
+      flash('Grading scale saved.')
+      await load()
+    } catch (e) {
+      flash(`Could not save grading scale: ${(e as Error).message}`, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const cell = 'px-3 py-2'
+  return (
+    <Card>
+      <CardHeader title="Grading Scale" meta="Used for results and report cards" />
+      {error && <div className="px-5 pt-3"><Alert type="danger">{error}</Alert></div>}
+      <table className="w-full border-collapse">
+        <thead>
+          <tr>
+            {['Grade', 'From', 'To', 'Grade Point', 'Remark', ''].map(h => (
+              <th key={h} className="px-3 py-2.5 bg-gray-50 border-b border-gray-200 text-[10px] font-bold tracking-[0.08em] uppercase text-gray-500 text-left">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={r.id ?? `new-${i}`} className="border-b border-gray-50">
+              <td className={cell}><Input className="w-16" value={r.grade} disabled={!canEdit} onChange={e => update(i, 'grade', e.target.value)} /></td>
+              <td className={cell}><Input className="w-20" type="number" value={r.min_score} disabled={!canEdit} onChange={e => update(i, 'min_score', e.target.value)} /></td>
+              <td className={cell}><Input className="w-20" type="number" value={r.max_score} disabled={!canEdit} onChange={e => update(i, 'max_score', e.target.value)} /></td>
+              <td className={cell}><Input className="w-20" type="number" step="0.1" value={r.grade_point} disabled={!canEdit} onChange={e => update(i, 'grade_point', e.target.value)} /></td>
+              <td className={cell}><Input placeholder="e.g. Mumtaz" value={r.description} disabled={!canEdit} onChange={e => update(i, 'description', e.target.value)} /></td>
+              <td className={`${cell} text-right`}>
+                {canEdit && <button onClick={() => setRows(prev => prev.filter((_, j) => j !== i))} className="text-gray-300 hover:text-red-500 text-xs cursor-pointer">Remove</button>}
+              </td>
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr><td colSpan={6} className="px-5 py-8 text-center text-sm text-gray-400">No grading scale yet — standard grading is used.</td></tr>
+          )}
+        </tbody>
+      </table>
+      {canEdit && (
+        <div className="flex justify-between p-4">
+          <Button variant="ghost" size="sm" onClick={() => setRows(prev => [...prev, { grade: '', min_score: '', max_score: '', grade_point: '0', description: '' }])}>
+            + Add Grade
+          </Button>
+          <Button variant="primary" size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Scale'}</Button>
+        </div>
+      )}
+    </Card>
   )
 }
