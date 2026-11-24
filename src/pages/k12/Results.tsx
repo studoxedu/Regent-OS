@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { Modal, ConfirmModal } from '../../components/ui/Modal'
 import { Field, Select, Textarea } from '../../components/ui/Form'
 import { flowExecute, supabase } from '../../lib/supabase'
-import { computeGrade } from '../../lib/utils'
+import { computeGrade, gradeFromBands, type GradeBand } from '../../lib/utils'
 import type { AppUser, K12Class, K12Subject, LearnerEnrollment } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -61,6 +61,7 @@ export default function K12Results({ appUser }: Props) {
   const [subjects, setSubjects] = useState<K12Subject[]>([])
   const [enrollments, setEnrollments] = useState<LearnerEnrollment[]>([])
   const [rows, setRows]         = useState<ScoreRow[]>([])
+  const [bands, setBands]       = useState<GradeBand[]>([])
 
   const [selectedClass, setSelectedClass]   = useState('')
   const [session, setSession]               = useState('2024/2025')
@@ -87,6 +88,15 @@ export default function K12Results({ appUser }: Props) {
       .then(({ data }) => setClasses((data ?? []) as K12Class[]))
     supabase.from('k12_subjects').select('*').eq('school_id', schoolId).order('name')
       .then(({ data }) => setSubjects((data ?? []) as K12Subject[]))
+    // The school's own grading scale, active session and active term
+    supabase.from('grade_scales').select('min_score, max_score, grade, grade_point, description').eq('school_id', schoolId)
+      .then(({ data }) => setBands((data ?? []) as GradeBand[]))
+    supabase.from('k12_academic_sessions').select('label').eq('school_id', schoolId).eq('is_active', true)
+      .order('start_date', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => { if (data?.label) setSession(data.label) })
+    supabase.from('k12_terms').select('term_number').eq('school_id', schoolId).eq('is_active', true)
+      .order('start_date', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => { if (data?.term_number) setTerm(String(data.term_number)) })
   }, [schoolId])
 
   const load = useCallback(async () => {
@@ -303,7 +313,7 @@ export default function K12Results({ appUser }: Props) {
                 {rows.map((row, i) => {
                   const caNum = parseFloat(row.ca), examNum = parseFloat(row.exam)
                   const total = (!isNaN(caNum) && !isNaN(examNum) && !row.caError && !row.examError) ? caNum + examNum : null
-                  const { grade } = total !== null ? computeGrade(total) : { grade: '' }
+                  const { grade } = total !== null ? (gradeFromBands(total, bands) ?? computeGrade(total)) : { grade: '' }
                   return (
                     <tr key={row.enrollmentId} className="border-b border-gray-50 hover:bg-gray-50/40">
                       <td className="px-4 py-2.5 text-xs text-gray-400 w-8">{i + 1}</td>
