@@ -7,12 +7,11 @@ import { Field, Input, Select, Checkbox, Grid2 } from '../../components/ui/Form'
 import { EnrollmentStatusBadge } from '../../components/ui/Badge'
 import { flowExecute, supabase } from '../../lib/supabase'
 import { notify } from '../../lib/notifications'
-import { formatDate, STAGE_LABELS } from '../../lib/utils'
+import { formatDate, schoolStages, sortClassesByProgression, stageLabel, STANDARD_K12_STAGES } from '../../lib/utils'
 import type { AppUser, LearnerEnrollment, K12Class, Stage } from '../../types'
 
 interface Props { appUser: AppUser }
 
-const K12_STAGES: Stage[] = ['nursery', 'primary', 'jss', 'sss']
 const PAGE_SIZE = 25
 
 // ── Migration: bulk learner import ────────────────────────────
@@ -89,6 +88,13 @@ export default function K12Enrollment({ appUser }: Props) {
   const [importDone, setImportDone] = useState(false)
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0 })
 
+  // Stages come from the school's own classes (e.g. Islamiyya: Raudah → Fasl),
+  // falling back to the standard stages the school offers.
+  const offered = (appUser.activeSchool?.stages_offered ?? []) as string[]
+  const availableStages: string[] = classes.length > 0
+    ? schoolStages(classes).filter(s => !STANDARD_K12_STAGES.includes(s) || offered.includes(s))
+    : STANDARD_K12_STAGES.filter(s => offered.includes(s))
+
   function parseBulk() {
     if (!csvText.trim()) return
     const rows = parseCSV(csvText)
@@ -106,7 +112,7 @@ export default function K12Enrollment({ appUser }: Props) {
   // Import one row. Returns the row with its outcome; never throws so one
   // bad row can't abort the whole migration.
   async function importOne(row: BulkRow): Promise<BulkRow> {
-    if (!row.first_name || !row.last_name || !K12_STAGES.includes(row.stage as Stage)) {
+    if (!row.first_name || !row.last_name || !availableStages.includes(row.stage)) {
       return { ...row, status: 'error', message: 'Missing name or invalid stage' }
     }
     if (row.nin.length !== 11 && row.guardian_nin.length !== 11) {
@@ -268,7 +274,7 @@ export default function K12Enrollment({ appUser }: Props) {
       loadData()
       showToast('Learner enrolled successfully.')
       notify(appUser.profile.id, schoolId, 'Learner enrolled', {
-        body: `${form.first_name} ${form.last_name} enrolled in ${form.stage.toUpperCase()}`,
+        body: `${form.first_name} ${form.last_name} enrolled in ${stageLabel(form.stage)}`,
         type: 'success',
         link: '/k12/enrollment',
       })
@@ -305,10 +311,7 @@ export default function K12Enrollment({ appUser }: Props) {
     setToast(msg); setTimeout(() => setToast(null), 4000)
   }
 
-  const availableStages = (appUser.activeSchool?.stages_offered ?? [])
-    .filter(s => K12_STAGES.includes(s as Stage)) as Stage[]
-
-  const classesForStage = (stage: Stage) => classes.filter(c => c.stage === stage)
+  const classesForStage = (stage: Stage) => sortClassesByProgression(classes).filter(c => c.stage === stage)
 
   return (
     <>
@@ -389,7 +392,7 @@ export default function K12Enrollment({ appUser }: Props) {
                         className="text-amber-600 hover:text-amber-700 font-semibold">+ Add NIN</button>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-sm text-gray-600">{STAGE_LABELS[en.stage] ?? en.stage}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">{stageLabel(en.stage)}</td>
                   <td className="px-5 py-3">
                     {assigningId === en.id ? (
                       <span className="text-xs text-gray-400">Saving…</span>
@@ -494,7 +497,7 @@ export default function K12Enrollment({ appUser }: Props) {
           <Select
             value={form.stage}
             onChange={e => setForm(f => ({ ...f, stage: e.target.value as Stage, class_id: '' }))}
-            options={availableStages.map(s => ({ value: s, label: STAGE_LABELS[s] }))}
+            options={availableStages.map(s => ({ value: s, label: stageLabel(s) }))}
             placeholder="Select stage…"
           />
         </Field>
