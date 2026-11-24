@@ -17,6 +17,56 @@ export const STAGE_LABELS: Record<Stage, string> = {
   nd: 'ND', hnd: 'HND', nce: 'NCE', degree: 'Degree',
 }
 
+/** The standard Nigerian K-12 stages, in order. */
+export const STANDARD_K12_STAGES: string[] = ['nursery', 'primary', 'jss', 'sss']
+
+/** Label for any stage, including school-defined ones (e.g. Islamiyya "raudah"). */
+export function stageLabel(stage: string | null | undefined): string {
+  if (!stage) return ''
+  return (STAGE_LABELS as Record<string, string>)[stage]
+    ?? stage.charAt(0).toUpperCase() + stage.slice(1)
+}
+
+type ClassLike = { id: string; name: string; stage: string; next_class_id?: string | null }
+
+/** Classes in progression order: follows each class's next_class_id chain from
+ *  the entry class onward; standard-stage schools fall back to stage order. */
+export function sortClassesByProgression<T extends ClassLike>(classes: T[]): T[] {
+  const byId = new Map(classes.map(c => [c.id, c]))
+  const pointedTo = new Set(classes.map(c => c.next_class_id).filter(Boolean) as string[])
+  const stdIdx = (s: string) => {
+    const i = STANDARD_K12_STAGES.indexOf(s)
+    return i === -1 ? 99 : i
+  }
+  const heads = classes
+    .filter(c => !pointedTo.has(c.id))
+    .sort((a, b) => stdIdx(a.stage) - stdIdx(b.stage) || a.name.localeCompare(b.name))
+  const out: T[] = []
+  const seen = new Set<string>()
+  for (const head of heads) {
+    let cur: T | undefined = head
+    while (cur && !seen.has(cur.id)) {
+      seen.add(cur.id); out.push(cur)
+      cur = cur.next_class_id ? byId.get(cur.next_class_id) : undefined
+    }
+  }
+  for (const c of classes) if (!seen.has(c.id)) out.push(c)  // cycles / leftovers
+  return out
+}
+
+/** The stages a K-12 school actually uses, taken from its own classes in
+ *  progression order. Schools with no classes yet get the standard stages. */
+export function schoolStages(classes: ClassLike[]): string[] {
+  if (classes.length === 0) return [...STANDARD_K12_STAGES]
+  const stages: string[] = []
+  for (const c of sortClassesByProgression(classes)) {
+    if (c.stage && !stages.includes(c.stage)) stages.push(c.stage)
+  }
+  // Standard schools: keep the familiar nursery → sss order and full list
+  if (stages.every(s => STANDARD_K12_STAGES.includes(s))) return [...STANDARD_K12_STAGES]
+  return stages
+}
+
 /** Colour config for result pipeline status badges. */
 export const RESULT_STATUS_STYLES: Record<
   ResultStatus,
