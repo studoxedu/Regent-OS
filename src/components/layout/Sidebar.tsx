@@ -173,7 +173,7 @@ function tertiaryModules(institutionType?: string | null, officeName?: string): 
 }
 
 // ── K12 — sections + items filtered by the office route allowlist ────────────
-function k12Modules(officeName?: string): NavSection[] {
+function k12Modules(officeName?: string, tierId?: string | null): NavSection[] {
   const all: NavSection[] = [
     { key:'overview',  heading:'Overview',   defaultTo:'/k12',
       items:[{ label:'Dashboard', to:'/k12' },{ label:'Audit Log', to:'/k12/audit' }] },
@@ -215,7 +215,7 @@ function k12Modules(officeName?: string): NavSection[] {
   // heading link never lands on a forbidden route.
   return all
     .map(s => {
-      const items = s.items.filter(i => k12RouteAllowed(officeName ?? '', i.to))
+      const items = s.items.filter(i => k12RouteAllowed(officeName ?? '', i.to, tierId))
       // If a section filters down to a single item, show that item's own
       // label as the heading (e.g. a lone "Announcements", not "Resources").
       const heading = items.length === 1 ? items[0].label : s.heading
@@ -327,7 +327,7 @@ export function Sidebar({ appUser, onSignOut, onSwitchMembership: _onSwitch, chi
     : isProprietor
     ? proprietorModules(appUser.proprietorSchools ?? [])
     : isK12
-    ? k12Modules(officeName)
+    ? k12Modules(officeName, activeSchool?.tier_id)
     : isStudent
     ? studentModules()
     : isLecturer
