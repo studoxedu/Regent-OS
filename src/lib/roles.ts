@@ -92,10 +92,26 @@ export const K12_OFFICE_ROUTES: Record<string, string[]> = {
 /** May this K-12 office open this pathname? Unknown offices are allowed
  *  (fail-open) so a new/unmapped role is never hard-locked out of the app;
  *  the database still enforces what they can actually write. */
-export function k12RouteAllowed(officeName: string, pathname: string): boolean {
+export function k12RouteAllowed(officeName: string, pathname: string, tierId?: string | null): boolean {
+  if (!k12RouteInTier(pathname, tierId)) return false
   const allowed = K12_OFFICE_ROUTES[officeName]
   if (!allowed) return true
   return allowed.includes(pathname)
+}
+
+// Pages whose data the database tier-gates (feature_tiers): hide them for
+// schools below that tier so they don't see empty, unsavable screens.
+const TIER_RANK: Record<string, number> = { core: 1, connect: 2, command: 3 }
+const K12_ROUTE_MIN_TIER: Record<string, string> = {
+  '/k12/timetable': 'connect',  // feature: timetabling
+  '/k12/cbt':       'command',  // feature: cbt
+}
+
+/** Is this K-12 page available on the school's plan tier? Unknown tier = allowed. */
+export function k12RouteInTier(pathname: string, tierId?: string | null): boolean {
+  const min = K12_ROUTE_MIN_TIER[pathname]
+  if (!min || !tierId || !TIER_RANK[tierId]) return true
+  return TIER_RANK[tierId] >= TIER_RANK[min]
 }
 
 /** Where a K-12 office should land — its first allowed route. Prevents a
