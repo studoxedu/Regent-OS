@@ -147,7 +147,7 @@ export function AppLayout({ appUser, onSignOut, onSwitchMembership }: AppLayoutP
   const blocked =
     isK12Office(office) &&
     location.pathname.startsWith('/k12') &&
-    !k12RouteAllowed(office, location.pathname)
+    !k12RouteAllowed(office, location.pathname, appUser.activeSchool?.tier_id)
 
   return (
     <div className="flex fixed inset-0">
