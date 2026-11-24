@@ -4,6 +4,7 @@ import { Card, Alert } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Select } from '../../components/ui/Form'
 import { supabase } from '../../lib/supabase'
+import { gradeFromBands, type GradeBand } from '../../lib/utils'
 import type { AppUser, K12Class, LearnerEnrollment, TermResult } from '../../types'
 
 interface Props { appUser: AppUser }
@@ -50,6 +51,7 @@ export default function ReportCards({ appUser }: Props) {
   const [classes, setClasses]       = useState<K12Class[]>([])
   const [selectedClass, setSelectedClass] = useState('')
   const [session, setSession]       = useState('')
+  const [bands, setBands]           = useState<GradeBand[]>([])
   const [term, setTerm]             = useState<string>('1')
   const [reports, setReports]       = useState<ReportData[]>([])
   const [selected, setSelected]     = useState<ReportData | null>(null)
@@ -64,7 +66,19 @@ export default function ReportCards({ appUser }: Props) {
   useEffect(() => {
     supabase.from('k12_classes').select('*').eq('school_id', schoolId).order('name')
       .then(({ data }) => setClasses((data ?? []) as K12Class[]))
+    // The school's own grading scale, active session and active term
+    supabase.from('grade_scales').select('min_score, max_score, grade, grade_point, description').eq('school_id', schoolId)
+      .then(({ data }) => setBands((data ?? []) as GradeBand[]))
+    supabase.from('k12_academic_sessions').select('label').eq('school_id', schoolId).eq('is_active', true)
+      .order('start_date', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => { if (data?.label) setSession(data.label) })
+    supabase.from('k12_terms').select('term_number').eq('school_id', schoolId).eq('is_active', true)
+      .order('start_date', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => { if (data?.term_number) setTerm(String(data.term_number)) })
   }, [schoolId])
+
+  const gradeOf  = (t: number) => gradeFromBands(t, bands)?.grade  ?? getGrade(t)
+  const remarkOf = (t: number) => gradeFromBands(t, bands)?.remark ?? getRemark(t)
 
   async function loadReports() {
     if (!selectedClass) return
@@ -263,8 +277,8 @@ export default function ReportCards({ appUser }: Props) {
                                   <td style={td}>{s.ca}</td>
                                   <td style={td}>{s.exam}</td>
                                   <td style={{ ...td, fontWeight: 'bold' }}>{total}</td>
-                                  <td style={{ ...td, fontWeight: 'bold', textAlign: 'center' }}>{getGrade(total)}</td>
-                                  <td style={td}>{getRemark(total)}</td>
+                                  <td style={{ ...td, fontWeight: 'bold', textAlign: 'center' }}>{gradeOf(total)}</td>
+                                  <td style={td}>{remarkOf(total)}</td>
                                 </tr>
                               )
                             })}
@@ -277,7 +291,7 @@ export default function ReportCards({ appUser }: Props) {
                             ['Subjects', String(subjRows.length)],
                             ['Total', String(totalMarks)],
                             ['Average', `${average.toFixed(1)}%`],
-                            ['Overall Grade', getGrade(average)],
+                            ['Overall Grade', gradeOf(average)],
                             ['Position', classSize ? `${ordinal(position)} of ${classSize}` : '—'],
                           ].map(([label, val]) => (
                             <div key={label} style={{ flex: 1, border: '1px solid #e5e5e5', borderRadius: '4px', padding: '6px 8px', textAlign: 'center' }}>
@@ -313,7 +327,7 @@ export default function ReportCards({ appUser }: Props) {
                                       <td style={td}>{TERM_NAMES[String(h.term)]} </td>
                                       <td style={td}>{n}</td>
                                       <td style={{ ...td, fontWeight: 'bold' }}>{avg != null ? `${avg.toFixed(1)}%` : '—'}</td>
-                                      <td style={{ ...td, textAlign: 'center' }}>{avg != null ? getGrade(avg) : '—'}</td>
+                                      <td style={{ ...td, textAlign: 'center' }}>{avg != null ? gradeOf(avg) : '—'}</td>
                                       <td style={td}>{h.status === 'published' ? 'Published' : 'Draft'}</td>
                                     </tr>
                                   )
