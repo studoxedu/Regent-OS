@@ -256,7 +256,7 @@ export default function ReportCards({ appUser }: Props) {
                       </div>
                       <div>
                         <strong>Class:</strong> {className}<br />
-                        <strong>Stage:</strong> {selected.enrollment.stage?.toUpperCase()}<br />
+                        {new Set(classes.map(c => c.stage)).size > 1 && <><strong>Stage:</strong> {selected.enrollment.stage?.toUpperCase()}<br /></>}
                         <strong>Date of Birth:</strong> {learner?.date_of_birth ?? '—'}
                       </div>
                     </div>
