@@ -365,11 +365,11 @@ export default function FeeManagement({ appUser }: Props) {
                       <Select value={strTerm} onChange={e => setStrTerm(e.target.value)}
                         options={[{value:'',label:'All terms'}, ...terms.map(t => ({value:t.id,label:t.label}))]} />
                     </div>
-                    <div>
+                    {STAGES.length > 1 && <div>
                       <label className="label mb-1 block">Stage (optional)</label>
                       <Select value={strStage} onChange={e => setStrStage(e.target.value)}
                         options={[{value:'',label:'All stages'}, ...STAGES.map(s => ({value:s,label:stageLabel(s)}))]} />
-                    </div>
+                    </div>}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -394,7 +394,7 @@ export default function FeeManagement({ appUser }: Props) {
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    {['Category', 'Term', 'Stage', 'Amount', 'Due Date', ''].map(h => (
+                    {['Category', 'Term', ...(STAGES.length > 1 ? ['Stage'] : []), 'Amount', 'Due Date', ''].map(h => (
                       <th key={h} className="px-5 py-2.5 bg-gray-50 border-b border-gray-200 text-[10px] font-bold tracking-[0.08em] uppercase text-gray-500 text-left">{h}</th>
                     ))}
                   </tr>
@@ -404,7 +404,7 @@ export default function FeeManagement({ appUser }: Props) {
                     <tr key={str.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                       <td className="px-5 py-3 text-sm font-semibold text-navy-900">{str.category?.name}</td>
                       <td className="px-5 py-3 text-sm text-gray-600">{str.term?.label ?? 'All terms'}</td>
-                      <td className="px-5 py-3 text-sm text-gray-600">{str.stage ? stageLabel(str.stage) : 'All stages'}</td>
+                      {STAGES.length > 1 && <td className="px-5 py-3 text-sm text-gray-600">{str.stage ? stageLabel(str.stage) : 'All stages'}</td>}
                       <td className="px-5 py-3 text-sm font-semibold text-navy-900">₦{str.amount.toLocaleString()}</td>
                       <td className="px-5 py-3 text-sm text-gray-500">{str.due_date ?? '—'}</td>
                       <td className="px-5 py-3 text-right">
