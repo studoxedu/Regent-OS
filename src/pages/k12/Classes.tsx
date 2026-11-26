@@ -93,6 +93,9 @@ export default function K12Classes({ appUser }: Props) {
   }
 
   const STAGES = schoolStages(classes)
+  // A school whose classes all share one stage (e.g. an Islamiyya) just has
+  // classes — no stage grouping anywhere.
+  const singleStage = classes.length > 0 && STAGES.length === 1
   const orderedClasses = sortClassesByProgression(classes)
   const classesByStage = STAGES.reduce((acc, stage) => {
     acc[stage] = orderedClasses.filter(c => c.stage === stage)
@@ -137,11 +140,13 @@ export default function K12Classes({ appUser }: Props) {
                   <Input placeholder="e.g. JSS 1A, Primary 3B" value={className} onChange={e => setClassName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && addClass()} />
                 </div>
+                {!singleStage && (
                 <div className="w-40">
                   <label className="label mb-1.5 block">Stage</label>
                   <Select value={classStage || STAGES[0]} onChange={e => setClassStage(e.target.value)}
                     options={STAGES.map(s => ({ value: s, label: stageLabel(s) }))} />
                 </div>
+                )}
                 <div className="flex items-end">
                   <Button variant="primary" size="sm" onClick={addClass} disabled={savingClass}>
                     {savingClass ? '…' : 'Add'}
@@ -160,7 +165,7 @@ export default function K12Classes({ appUser }: Props) {
             {STAGES.map(stage => (
               classesByStage[stage].length > 0 && (
                 <div key={stage}>
-                  <div className="label mb-3">{stageLabel(stage)}</div>
+                  {!singleStage && <div className="label mb-3">{stageLabel(stage)}</div>}
                   <div className="grid grid-cols-3 gap-3">
                     {classesByStage[stage].map(cls => (
                       <Card key={cls.id} className="px-4 py-3">
@@ -201,11 +206,11 @@ export default function K12Classes({ appUser }: Props) {
                     onChange={e => setSubjectName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && addSubject()} />
                 </div>
-                <div className="w-40">
+                {!singleStage && <div className="w-40">
                   <label className="label mb-1.5 block">Stage (optional)</label>
                   <Select value={subjectStage} onChange={e => setSubjectStage(e.target.value)}
                     options={[{ value: '', label: 'All stages' }, ...STAGES.map(s => ({ value: s, label: stageLabel(s) }))]} />
-                </div>
+                </div>}
                 <div className="flex items-end">
                   <Button variant="primary" size="sm" onClick={addSubject} disabled={savingSubject}>
                     {savingSubject ? '…' : 'Add'}
@@ -219,7 +224,7 @@ export default function K12Classes({ appUser }: Props) {
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    {['Subject Name', 'Stage', ''].map(h => (
+                    {(singleStage ? ['Subject Name', ''] : ['Subject Name', 'Stage', '']).map(h => (
                       <th key={h} className="px-5 py-2.5 bg-gray-50 border-b border-gray-200 text-[10px] font-bold tracking-[0.08em] uppercase text-gray-500 text-left">{h}</th>
                     ))}
                   </tr>
@@ -228,14 +233,14 @@ export default function K12Classes({ appUser }: Props) {
                   {subjects.map(sub => (
                     <tr key={sub.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                       <td className="px-5 py-3 text-sm font-semibold text-navy-900">{sub.name}</td>
-                      <td className="px-5 py-3 text-sm text-gray-500">{sub.stage ? stageLabel(sub.stage) : 'All stages'}</td>
+                      {!singleStage && <td className="px-5 py-3 text-sm text-gray-500">{sub.stage ? stageLabel(sub.stage) : 'All stages'}</td>}
                       <td className="px-5 py-3 text-right">
                         <button onClick={() => deleteSubject(sub.id)} className="text-gray-300 hover:text-red-500 text-xs cursor-pointer">Remove</button>
                       </td>
                     </tr>
                   ))}
                   {subjects.length === 0 && (
-                    <tr><td colSpan={3} className="px-5 py-8 text-center text-sm text-gray-400">No subjects yet.</td></tr>
+                    <tr><td colSpan={singleStage ? 2 : 3} className="px-5 py-8 text-center text-sm text-gray-400">No subjects yet.</td></tr>
                   )}
                 </tbody>
               </table>
