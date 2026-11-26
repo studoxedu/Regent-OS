@@ -94,6 +94,8 @@ export default function K12Enrollment({ appUser }: Props) {
   const availableStages: string[] = classes.length > 0
     ? schoolStages(classes).filter(s => !STANDARD_K12_STAGES.includes(s) || offered.includes(s))
     : STANDARD_K12_STAGES.filter(s => offered.includes(s))
+  // One stage only (e.g. an Islamiyya): no stage step — pick a class directly.
+  const onlyStage: string | null = classes.length > 0 && availableStages.length === 1 ? availableStages[0] : null
 
   function parseBulk() {
     if (!csvText.trim()) return
@@ -112,7 +114,8 @@ export default function K12Enrollment({ appUser }: Props) {
   // Import one row. Returns the row with its outcome; never throws so one
   // bad row can't abort the whole migration.
   async function importOne(row: BulkRow): Promise<BulkRow> {
-    if (!row.first_name || !row.last_name || !availableStages.includes(row.stage)) {
+    const stage = onlyStage ?? row.stage
+    if (!row.first_name || !row.last_name || !availableStages.includes(stage)) {
       return { ...row, status: 'error', message: 'Missing name or invalid stage' }
     }
     if (row.nin.length !== 11 && row.guardian_nin.length !== 11) {
@@ -121,7 +124,7 @@ export default function K12Enrollment({ appUser }: Props) {
     try {
       const result = await flowExecute('learner.enroll', schoolId, {
         first_name: row.first_name, last_name: row.last_name,
-        date_of_birth: row.date_of_birth || null, stage: row.stage,
+        date_of_birth: row.date_of_birth || null, stage,
         guardian_consent_captured: true,
       })
       const code = result?.result?.learner_id as string | undefined
@@ -133,7 +136,7 @@ export default function K12Enrollment({ appUser }: Props) {
             p_nin: row.nin || null, p_guardian_nin: row.guardian_nin || null,
           })
           // Match class by name within the stage
-          const cls = classes.find(c => c.stage === row.stage && c.name.toLowerCase() === row.class_name.toLowerCase())
+          const cls = classes.find(c => c.stage === stage && c.name.trim().toLowerCase() === row.class_name.trim().toLowerCase())
           if (cls && result?.result?.enrollment_id) {
             await supabase.from('learner_enrollments').update({ class_id: cls.id }).eq('id', result.result.enrollment_id as string)
           }
@@ -232,7 +235,7 @@ export default function K12Enrollment({ appUser }: Props) {
   }, [searchInput])
 
   async function handleEnroll() {
-    if (!form.first_name || !form.last_name || !form.stage) return
+    if (!form.first_name || !form.last_name || !(form.stage || onlyStage)) return
     if (!ninProvided) {
       showToast('Provide the learner’s NIN, or a guardian’s NIN if the learner has none.')
       return
@@ -243,7 +246,7 @@ export default function K12Enrollment({ appUser }: Props) {
         first_name: form.first_name,
         last_name: form.last_name,
         date_of_birth: form.date_of_birth || null,
-        stage: form.stage,
+        stage: form.stage || onlyStage,
         guardian_consent_captured: form.guardian_consent_captured,
       })
 
@@ -274,7 +277,7 @@ export default function K12Enrollment({ appUser }: Props) {
       loadData()
       showToast('Learner enrolled successfully.')
       notify(appUser.profile.id, schoolId, 'Learner enrolled', {
-        body: `${form.first_name} ${form.last_name} enrolled in ${stageLabel(form.stage)}`,
+        body: `${form.first_name} ${form.last_name} enrolled in ${onlyStage ? (classes.find(c => c.id === form.class_id)?.name ?? 'the school') : stageLabel(form.stage)}`,
         type: 'success',
         link: '/k12/enrollment',
       })
@@ -349,7 +352,7 @@ export default function K12Enrollment({ appUser }: Props) {
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                {['Learner', 'Learner ID', 'NIN', 'Stage', 'Class', 'Entry Date', 'Status', 'Consent'].map(h => (
+                {['Learner', 'Learner ID', 'NIN', ...(onlyStage ? [] : ['Stage']), 'Class', 'Entry Date', 'Status', 'Consent'].map(h => (
                   <th key={h} className="px-5 py-2.5 text-left bg-gray-50 border-b border-gray-200 text-[10px] font-bold tracking-[0.08em] uppercase text-gray-500">
                     {h}
                   </th>
@@ -392,7 +395,7 @@ export default function K12Enrollment({ appUser }: Props) {
                         className="text-amber-600 hover:text-amber-700 font-semibold">+ Add NIN</button>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-sm text-gray-600">{stageLabel(en.stage)}</td>
+                  {!onlyStage && <td className="px-5 py-3 text-sm text-gray-600">{stageLabel(en.stage)}</td>}
                   <td className="px-5 py-3">
                     {assigningId === en.id ? (
                       <span className="text-xs text-gray-400">Saving…</span>
@@ -403,7 +406,7 @@ export default function K12Enrollment({ appUser }: Props) {
                         className="text-xs border border-gray-200 rounded-sm px-2 py-1 text-navy-800 bg-white focus:outline-none focus:border-navy-400 max-w-[140px]"
                       >
                         <option value="">— unassigned —</option>
-                        {classesForStage(en.stage).map(c => (
+                        {(onlyStage ? sortClassesByProgression(classes) : classesForStage(en.stage)).map(c => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                       </select>
@@ -458,7 +461,7 @@ export default function K12Enrollment({ appUser }: Props) {
             <Button
               variant="primary"
               onClick={handleEnroll}
-              disabled={saving || !form.first_name || !form.last_name || !form.stage || !ninProvided}
+              disabled={saving || !form.first_name || !form.last_name || !(form.stage || onlyStage) || !ninProvided}
             >
               {saving ? 'Enrolling…' : '+ Enroll Learner'}
             </Button>
@@ -493,6 +496,16 @@ export default function K12Enrollment({ appUser }: Props) {
             Enter the learner's NIN, or a guardian's NIN if the learner has none.
           </p>
         )}
+        {onlyStage ? (
+          <Field label="Class">
+            <Select
+              value={form.class_id}
+              onChange={e => setForm(f => ({ ...f, class_id: e.target.value }))}
+              options={sortClassesByProgression(classes).map(c => ({ value: c.id, label: c.name }))}
+              placeholder="Select class…"
+            />
+          </Field>
+        ) : (<>
         <Field label="Stage" required>
           <Select
             value={form.stage}
@@ -511,6 +524,7 @@ export default function K12Enrollment({ appUser }: Props) {
             />
           </Field>
         )}
+        </>)}
         <Checkbox
           label={<><strong>Guardian consent captured and timestamped</strong> — required under NDPA 2023 for minors</>}
           checked={form.guardian_consent_captured}
@@ -577,7 +591,7 @@ export default function K12Enrollment({ appUser }: Props) {
             <div className="border border-gray-100 rounded max-h-64 overflow-auto">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-gray-50">
-                  <tr>{['#', 'Name', 'Stage', 'Class', 'NIN', 'Status'].map(h => (
+                  <tr>{['#', 'Name', ...(onlyStage ? [] : ['Stage']), 'Class', 'NIN', 'Status'].map(h => (
                     <th key={h} className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{h}</th>
                   ))}</tr>
                 </thead>
@@ -586,7 +600,7 @@ export default function K12Enrollment({ appUser }: Props) {
                     <tr key={row.idx} className={`border-t border-gray-50 ${row.status === 'error' ? 'bg-red-50/40' : row.status === 'ok' ? 'bg-green-50/30' : ''}`}>
                       <td className="px-3 py-1.5 text-gray-400">{row.idx + 1}</td>
                       <td className="px-3 py-1.5 font-semibold text-navy-900">{row.last_name}, {row.first_name}</td>
-                      <td className="px-3 py-1.5 text-gray-600">{row.stage}</td>
+                      {!onlyStage && <td className="px-3 py-1.5 text-gray-600">{row.stage}</td>}
                       <td className="px-3 py-1.5 text-gray-600">{row.class_name || '—'}</td>
                       <td className="px-3 py-1.5 font-mono text-gray-500">{row.nin || row.guardian_nin || '—'}</td>
                       <td className="px-3 py-1.5">
